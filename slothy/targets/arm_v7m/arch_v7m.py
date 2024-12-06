@@ -973,6 +973,10 @@ class movt_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,inval
     pattern = "movt <Rd>,<imm>"
     in_outs = ["Rd"]
 
+class mov_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "mov <Rd>, <imm>"
+    outputs = ["Rd"]
+
 # Addition
 class add(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "add<width> <Rd>,<Ra>,<Rb>"
@@ -1013,6 +1017,12 @@ class sadd16(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid
     pattern = "sadd16<width> <Rd>,<Ra>,<Rb>"
     inputs = ["Ra","Rb"]
     outputs = ["Rd"]
+
+class adc(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "adc<width> <Rd>, <Ra>, <Rb>"
+    inputs = ["Ra", "Rb"]
+    outputs = ["Rd"]
+    dependsOnFlags=True
 
 # Subtraction
 class sub(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name

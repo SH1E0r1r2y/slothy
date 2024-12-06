@@ -656,6 +656,23 @@ class Armv7mExample0(Example):
         slothy.config.inputs_are_outputs = True
         slothy.optimize(start="start", end="end")
 
+class Fe25519Armv7m(Example):
+    def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
+        name = "fe25519_add"
+        infile = name
+
+        if var != "":
+            name += f"_{var}"
+            infile += f"_{var}"
+        name += f"_{target_label_dict[target]}"
+
+        super().__init__(infile, name, rename=True, arch=arch, target=target)
+
+    def core(self,slothy):
+        slothy.config.variable_size=True
+        slothy.config.inputs_are_outputs = True
+        slothy.optimize(start="slothy_start", end="slothy_end")
+
 class Armv7mLoopSubs(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
         name = "loop_subs"
@@ -1513,6 +1530,7 @@ def main():
 
                 # Armv7m examples
                  Armv7mExample0(),
+                 Fe25519Armv7m(),
 
                 # Loop examples
                  AArch64LoopSubs(),
