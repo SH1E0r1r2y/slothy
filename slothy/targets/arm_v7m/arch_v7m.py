@@ -977,6 +977,10 @@ class mov_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invali
     pattern = "mov <Rd>, <imm>"
     outputs = ["Rd"]
 
+class movs_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "movs <Rd>, <imm>"
+    outputs = ["Rd"]
+
 # Addition
 class add(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "add<width> <Rd>,<Ra>,<Rb>"
@@ -1162,6 +1166,13 @@ class smuadx(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-
     outputs = ["Ra"]
 
 
+class umaal(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-name
+    pattern = "umaal<width> <Ra>, <Rb>, <Rc>, <Rd>"
+    inputs = ["Rc","Rd"]
+    in_outs = ["Ra", "Rb"]
+
+
+
 # Logical
 
 class neg_short(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
@@ -1222,6 +1233,11 @@ class eor_shifted(Armv7mShiftedLogical): # pylint: disable=missing-docstring,inv
 class bic(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
     pattern = "bic<width> <Rd>,<Ra>,<Rb>"
     inputs = ["Ra", "Rb"]
+    outputs = ["Rd"]
+
+class bic_imm(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
+    pattern = "bic<width> <Rd>, <Ra>, <imm>"
+    inputs = ["Ra"]
     outputs = ["Rd"]
 
 class bics(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
@@ -1485,7 +1501,6 @@ class ldm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missi
         regs = ",".join(self.args_out)
         self.reg_list = f"{{{regs}}}"
         return super().write()
-
 
     @classmethod
     def make(cls, src):
