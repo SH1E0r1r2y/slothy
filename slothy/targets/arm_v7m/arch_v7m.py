@@ -1018,6 +1018,12 @@ class adds_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,inv
     in_outs = ["Rd"]
     modifiesFlags=True
 
+class adds_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "adds<width> <Rd>,<Ra>,<imm>"
+    inputs = ["Ra"]
+    outputs = ["Rd"]
+    modifiesFlags=True
+
 class uadd16(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "uadd16<width> <Rd>,<Ra>,<Rb>"
     inputs = ["Ra","Rb"]
@@ -1205,7 +1211,10 @@ class umaal(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-n
     inputs = ["Rc","Rd"]
     in_outs = ["Ra", "Rb"]
 
-
+class umull(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-name
+    pattern = "umull<width> <Ra>,<Rb>,<Rc>,<Rd>"
+    inputs = ["Rc","Rd"]
+    in_outs = ["Ra", "Rb"]
 
 # Logical
 
@@ -1483,6 +1492,17 @@ class ldrd_imm(Ldrd): # pylint: disable=missing-docstring,invalid-name
         obj.addr = obj.args_in_out[0]
         return obj
 
+class ldrd_with_imm_stack(Ldrd): # pylint: disable=missing-docstring,invalid-name
+    pattern = "ldrd<width> <Rd>,<Ra>,[sp,<imm>]"
+    outputs = ["Rd","Ra"]
+    @classmethod
+    def make(cls, src):
+        obj = Armv7mInstruction.build(cls, src)
+        obj.increment = None
+        obj.pre_index = obj.immediate
+        obj.addr = "sp"
+        return obj
+
 class ldrd_with_postinc(Ldrd): # pylint: disable=missing-docstring,invalid-name
     pattern = "ldrd<width> <Ra>,<Rb>,[<Rc>],<imm>"
     in_outs = [ "Rc" ]
@@ -1677,6 +1697,22 @@ class str_with_imm_stack(Armv7mStoreInstruction): # pylint: disable=missing-docs
         self.immediate = simplify(self.pre_index)
         return super().write()
 
+class strd_with_imm_stack(Armv7mStoreInstruction): # pylint: disable=missing-docstring,invalid-name
+    pattern = "strd<width> <Rd>,<Ra>,[sp,<imm>]"
+    inputs = ["Rd","Ra"]
+    outputs = []
+    @classmethod
+    def make(cls, src):
+        obj = Armv7mInstruction.build(cls, src)
+        obj.increment = None
+        obj.pre_index = obj.immediate
+        obj.addr = "sp"
+        return obj
+
+    def write(self):
+        self.immediate = simplify(self.pre_index)
+        return super().write()
+
 class str_with_postinc(Armv7mStoreInstruction): # pylint: disable=missing-docstring,invalid-name
     pattern = "str<width> <Rd>,[<Ra>],<imm>"
     inputs = ["Rd"]
@@ -1737,6 +1773,59 @@ class cmp_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invali
     pattern = "cmp<width> <Ra>,<imm>"
     inputs = ["Ra"]
     modifiesFlags=True
+
+# TODO: model depenency through stack correctly
+class push(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "push<width> <reg_list>"
+    in_outs = []
+    outputs = []
+
+    def write(self):
+        regs = ",".join(self.args_out)
+        self.reg_list = f"{{{regs}}}"
+        return super().write()
+
+    @classmethod
+    def make(cls, src):
+        obj = Armv7mLoadInstruction.build(cls, src)
+        reg_list_type, reg_list = Armv7mInstruction._expand_reg_list(obj.reg_list)
+
+        obj.addr = "sp"
+        obj.args_in = reg_list
+        obj.num_in = len(obj.args_in)
+        obj.arg_types_in = [RegisterType.GPR] * obj.num_in
+        obj.increment = obj.num_in * 4
+
+        available_regs = RegisterType.list_registers(RegisterType.GPR)
+        obj.args_in_combinations =  [ (list(range(0, obj.num_in)), [list(a) for a in itertools.combinations(available_regs, obj.num_in)])]
+        obj.args_in_restrictions = [ None for _ in range(obj.num_in)    ]
+        return obj
+    
+class pop(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "pop<width> <reg_list>"
+    in_outs = []
+    outputs = []
+
+    def write(self):
+        regs = ",".join(self.args_out)
+        self.reg_list = f"{{{regs}}}"
+        return super().write()
+
+    @classmethod
+    def make(cls, src):
+        obj = Armv7mLoadInstruction.build(cls, src)
+        reg_list_type, reg_list = Armv7mInstruction._expand_reg_list(obj.reg_list)
+
+        obj.addr = "sp"
+        obj.args_out = reg_list
+        obj.num_out = len(obj.args_out)
+        obj.arg_types_out = [RegisterType.GPR] * obj.num_out
+        obj.increment = obj.num_out * 4
+
+        available_regs = RegisterType.list_registers(RegisterType.GPR)
+        obj.args_out_combinations =  [ (list(range(0, obj.num_out)), [list(a) for a in itertools.combinations(available_regs, obj.num_out)])]
+        obj.args_out_restrictions = [ None for _ in range(obj.num_out)    ]
+        return obj
 
 class Spill:
     def spill(reg, loc, spill_to_vreg=None):
