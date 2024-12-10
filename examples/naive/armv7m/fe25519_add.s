@@ -52,12 +52,12 @@ fe25519_add:
 	.global fe25519_add
 
 slothy_start:
-    // TODO: currently ldr r0,[r8,#28] does not parse, but ldr r0, [r8, #28] does parse. Need to make the parsing more flexible
-	ldr r0, [r8, #28]
-	ldr r4, [r9, #28]
-	adds r0, r0, r4
-	mov r11, #0
-	adc r11, r11, r11
+
+	ldr r0,[r8,#28]
+	ldr r4,[r9,#28]
+	adds r0,r0,r4
+	mov r11,#0
+	adc r11,r11,r11
 	lsl r11, r11, #1
 	add r11, r11, r0, lsr #31
 	movs r7, #19
@@ -65,9 +65,7 @@ slothy_start:
 	bic r7, r0, #0x80000000
 	
 	ldm r8!, {r0-r3}
-	// TODO: ldm r9!,{r4-r6,r10} doesnt parse right now
-	ldm r9!, {r4-r6}
-	ldr r10, [r9], #4
+	ldm r9!,{r4-r6,r10} 
 	mov r12, #1
 	umaal r0, r11, r12, r4
 	umaal r1, r11, r12, r5

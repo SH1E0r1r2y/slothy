@@ -37,14 +37,12 @@ fe25519_sub:
 	.global fe25519_sub
 slothy_start:
 	ldm r8, {r0-r7}
-	// ldm r9!,{r8,r10-r12}
-	ldr r8, [r9], #4
-	ldm r9!, {r10-r12}
-	subs r0, r8
+	ldm r9!,{r8,r10-r12}
+	subs r0,r8
 	sbcs r1,r10
 	sbcs r2,r11
 	sbcs r3,r12
-	ldm r9, {r8-r11}
+	ldm r9,{r8-r11}
 	sbcs r4,r8
 	sbcs r5,r9
 	sbcs r6,r10

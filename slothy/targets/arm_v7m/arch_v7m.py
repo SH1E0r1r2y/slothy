@@ -974,11 +974,11 @@ class movt_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,inval
     in_outs = ["Rd"]
 
 class mov_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
-    pattern = "mov <Rd>, <imm>"
+    pattern = "mov <Rd>,<imm>"
     outputs = ["Rd"]
 
 class movs_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
-    pattern = "movs <Rd>, <imm>"
+    pattern = "movs <Rd>,<imm>"
     outputs = ["Rd"]
 
 # Addition
@@ -1029,7 +1029,7 @@ class sadd16(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid
     outputs = ["Rd"]
 
 class adc(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
-    pattern = "adc<width> <Rd>, <Ra>, <Rb>"
+    pattern = "adc<width> <Rd>,<Ra>,<Rb>"
     inputs = ["Ra", "Rb"]
     outputs = ["Rd"]
     dependsOnFlags=True
@@ -1066,7 +1066,7 @@ class sub_imm_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,
     in_outs = ["Ra"]
 
 class subs_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
-    pattern = "subs<width> <Rd>, <Ra>"
+    pattern = "subs<width> <Rd>,<Ra>"
     inputs = ["Ra"]
     in_outs = ["Rd"]
     modifiesFlags = True
@@ -1201,7 +1201,7 @@ class smuadx(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-
 
 
 class umaal(Armv7mMultiplication): # pylint: disable=missing-docstring,invalid-name
-    pattern = "umaal<width> <Ra>, <Rb>, <Rc>, <Rd>"
+    pattern = "umaal<width> <Ra>,<Rb>,<Rc>,<Rd>"
     inputs = ["Rc","Rd"]
     in_outs = ["Ra", "Rb"]
 
@@ -1275,7 +1275,7 @@ class bic(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
     outputs = ["Rd"]
 
 class bic_imm(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
-    pattern = "bic<width> <Rd>, <Ra>, <imm>"
+    pattern = "bic<width> <Rd>,<Ra>,<imm>"
     inputs = ["Ra"]
     outputs = ["Rd"]
 
