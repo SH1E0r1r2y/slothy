@@ -29,55 +29,53 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-
-// This is an armv7 implementation of X25519.
-// It follows the reference implementation where the representation of
-// a field element [0..2^255-19) is represented by a 256-bit little ian integer,
-// reduced modulo 2^256-38, and may possibly be in the range [2^256-38..2^256).
-// The scalar is a 256-bit integer where certain bits are hardcoded per specification.
-//
-// The implementation runs in constant time (548 873 cycles on ARM Cortex-M4,
-// assuming no wait states), and no conditional branches or memory access
-// pattern dep on secret data.
-
 	.text
 	.align 2
 
-// input: *r8=a, *r9=b
-// output: r0-r7
-// clobbers all other registers
-// cycles: 45
-	.type fe25519_add, %function
-fe25519_add:
-	.global fe25519_add
 
+fe25519_sub:
+	.global fe25519_sub
 slothy_start:
-    // TODO: currently ldr r0,[r8,#28] does not parse, but ldr r0, [r8, #28] does parse. Need to make the parsing more flexible
-	ldr r0, [r8, #28]
-	ldr r4, [r9, #28]
-	adds r0, r0, r4
-	mov r11, #0
-	adc r11, r11, r11
-	lsl r11, r11, #1
-	add r11, r11, r0, lsr #31
-	movs r7, #19
-	mul r11, r11, r7
-	bic r7, r0, #0x80000000
-	
-	ldm r8!, {r0-r3}
-	// TODO: ldm r9!,{r4-r6,r10} doesnt parse right now
-	ldm r9!, {r4-r6}
-	ldr r10, [r9], #4
-	mov r12, #1
-	umaal r0, r11, r12, r4
-	umaal r1, r11, r12, r5
-	umaal r2, r11, r12, r6
-	umaal r3, r11, r12, r10
-	ldm r9, {r4-r6}
-	ldm r8, {r8-r10}
-	umaal r4, r11, r12, r8
-	umaal r5, r11, r12, r9
-	umaal r6, r11, r12, r10
-	add r7, r7, r11
+	ldm r8, {r0-r7}
+	// ldm r9!,{r8,r10-r12}
+	ldr r8, [r9], #4
+	ldm r9!, {r10-r12}
+	subs r0, r8
+	sbcs r1,r10
+	sbcs r2,r11
+	sbcs r3,r12
+	ldm r9, {r8-r11}
+	sbcs r4,r8
+	sbcs r5,r9
+	sbcs r6,r10
+	sbcs r7,r11
+
+	// if subtraction goes below 0, set r8 to -1 and r9 to -38, else set both to 0s
+	sbc r8,r8
+	and r9,r8,#-38
+
+	adds r0,r9
+	adcs r1,r8
+	adcs r2,r8
+	adcs r3,r8
+	adcs r4,r8
+	adcs r5,r8
+	adcs r6,r8
+	adcs r7,r8
+
+	// if the subtraction did not go below 0, we are done and (r8,r9) are set to 0
+	// if the subtraction went below 0 and the addition overflowed, we are done, so set (r8,r9) to 0
+	// if the subtraction went below 0 and the addition did not overflow, we need to add once more
+	// (r8,r9) will be correctly set to (-1,-38) only when r8 was -1 and we don't have a carry,
+	// note that the carry will always be 0 in case (r8,r9) was (0,0) since then there was no real addition
+	// also note that it is extremely unlikely we will need an extra addition:
+	//   that can only happen if input1 was slightly >= 0 and input2 was > 2^256-38 (really input2-input1 > 2^256-38)
+	//   in that case we currently have 2^256-38 < (r0...r7) < 2^256, so adding -38 will only affect r0
+	adcs r8,#0
+	and r9,r8,#-38
+
+	adds r0,r9
 slothy_end:
 	bx lr
+
+	.size fe25519_sub, .-fe25519_sub

@@ -1012,6 +1012,12 @@ class adds(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-n
     outputs = ["Rd"]
     modifiesFlags=True
 
+class adds_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "adds<width> <Rd>,<Ra>"
+    inputs = ["Ra"]
+    in_outs = ["Rd"]
+    modifiesFlags=True
+
 class uadd16(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "uadd16<width> <Rd>,<Ra>,<Rb>"
     inputs = ["Ra","Rb"]
@@ -1026,6 +1032,17 @@ class adc(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-na
     pattern = "adc<width> <Rd>, <Ra>, <Rb>"
     inputs = ["Ra", "Rb"]
     outputs = ["Rd"]
+    dependsOnFlags=True
+
+class adcs_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "adcs<width> <Rd>,<Ra>"
+    inputs = ["Ra"]
+    in_outs = ["Rd"]
+    dependsOnFlags=True
+
+class adcs_imm_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "adcs<width> <Rd>,<imm>"
+    in_outs = ["Rd"]
     dependsOnFlags=True
 
 # Subtraction
@@ -1048,9 +1065,26 @@ class sub_imm_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,
     pattern = "sub<width> <Ra>,<imm>"
     in_outs = ["Ra"]
 
+class subs_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "subs<width> <Rd>, <Ra>"
+    inputs = ["Ra"]
+    in_outs = ["Rd"]
+    modifiesFlags = True
+
 class subs_imm_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "subs<width> <Ra>,<imm>"
     in_outs = ["Ra"]
+    modifiesFlags = True
+
+class sbc_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "sbc<width> <Rd>,<Ra>"
+    inputs = ["Ra"]
+    outputs = ["Rd"]
+
+class sbcs_short(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
+    pattern = "sbcs<width> <Rd>,<Ra>"
+    inputs = ["Ra"]
+    in_outs = ["Rd"]
     modifiesFlags = True
 
 class usub16(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
@@ -1187,6 +1221,11 @@ class log_and(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
 class log_and_shifted(Armv7mShiftedLogical): # pylint: disable=missing-docstring,invalid-name
     pattern = "and<width> <Rd>,<Ra>,<Rb>,<barrel><imm>"
     inputs = ["Ra", "Rb"]
+    outputs = ["Rd"]
+
+class log_and_imm(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
+    pattern = "and<width> <Rd>,<Ra>,<imm>"
+    inputs = ["Ra"]
     outputs = ["Rd"]
 
 class log_or(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
