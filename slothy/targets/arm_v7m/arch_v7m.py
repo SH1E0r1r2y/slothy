@@ -975,7 +975,7 @@ class movt_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,inval
 
 class mov(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
     pattern = "mov <Rd>,<Ra>"
-    input = ["Ra"]
+    inputs = ["Ra"]
     outputs = ["Rd"]
 
 class mov_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name
@@ -1798,7 +1798,7 @@ class push(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-n
     outputs = []
 
     def write(self):
-        regs = ",".join(self.args_out)
+        regs = ",".join(self.args_in)
         self.reg_list = f"{{{regs}}}"
         return super().write()
 

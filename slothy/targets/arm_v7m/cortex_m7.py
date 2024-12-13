@@ -138,11 +138,13 @@ execution_units = {
         stm_interval_inc_writeback
     ): [[ExecutionUnit.STORE, ExecutionUnit.MAC]],
     (
+        mov,
         mov_imm,
         movs_imm,
         movw_imm,
         movt_imm,
         adc,
+        adcs,
         adcs_short,
         adcs_imm_short,
         adds,
@@ -164,6 +166,8 @@ execution_units = {
         bic_imm,
         bic, bics,
         cmp, cmp_imm,
+        # To do: To do: Not sure where to put the 'pop' and 'push' classes.the book?
+        pop,push,
     ): ExecutionUnit.ALU(),
     (ror, ror_short, rors_short, lsl, asr, asrs): [[ExecutionUnit.ALU0], [ExecutionUnit.ALU1]],
     (mul, mul_short, smull, umaal, umull,smlal, mla, mls, smulwb, smulwt, smultb, smultt,
@@ -190,11 +194,13 @@ inverse_throughput = {
         vldr_with_imm, vldr_with_postinc,  # TODO: double-check
         # actually not, just placeholder
         ldm_interval, ldm_interval_inc_writeback, vldm_interval_inc_writeback,
+        mov,
         mov_imm,
         movs_imm,
         movw_imm,
         movt_imm,
         adc,
+        adcs,
         adcs_short,
         adcs_imm_short,
         adds,
@@ -238,6 +244,7 @@ inverse_throughput = {
         str_no_off,
         strh_with_imm,
         strh_with_postinc,
+        pop,push,
 
     ): 1,
     (
@@ -247,11 +254,13 @@ inverse_throughput = {
 
 default_latencies = {
     (
+        mov,
         mov_imm,
         movs_imm,
         movw_imm,
         movt_imm,
         adc,
+        adcs,
         adcs_short,
         adcs_imm_short,
         adds,
@@ -289,6 +298,7 @@ default_latencies = {
         str_no_off,
         strh_with_imm,
         strh_with_postinc,
+        pop,push,
     ): 1,
     (
         mul, mul_short,
