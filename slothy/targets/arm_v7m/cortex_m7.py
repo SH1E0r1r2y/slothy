@@ -123,12 +123,14 @@ execution_units = {
         ): ExecutionUnit.LOAD(),
     (
         Ldrd,
+        ldrd_with_imm_stack,
         ldm_interval,
         ldm_interval_inc_writeback,
         vldm_interval_inc_writeback): [ExecutionUnit.LOAD()],
     (
         str_with_imm,
         str_with_imm_stack,
+        strd_with_imm_stack,
         str_with_postinc,
         str_no_off,
         strh_with_imm,
@@ -164,7 +166,7 @@ execution_units = {
         cmp, cmp_imm,
     ): ExecutionUnit.ALU(),
     (ror, ror_short, rors_short, lsl, asr, asrs): [[ExecutionUnit.ALU0], [ExecutionUnit.ALU1]],
-    (mul, mul_short, smull, umaal, smlal, mla, mls, smulwb, smulwt, smultb, smultt,
+    (mul, mul_short, smull, umaal, umull,smlal, mla, mls, smulwb, smulwt, smultb, smultt,
      smulbb, smlabt, smlabb, smlatt, smlatb, smlad, smladx, smuad, smuadx, smmulr): [ExecutionUnit.MAC],
     (vmov_gpr, vmov_gpr2, vmov_gpr2_dual): [ExecutionUnit.FPU],
     (uadd16, sadd16, usub16, ssub16): list(map(list, product(ExecutionUnit.ALU(), [ExecutionUnit.SIMD]))),
@@ -180,6 +182,7 @@ inverse_throughput = {
         ldr_with_inc_writeback,
         ldr_with_postinc,
         Ldrd,
+        ldrd_with_imm_stack,
         ldrb_with_imm,
         ldrh_with_imm,
         ldrh_with_postinc,
@@ -211,6 +214,7 @@ inverse_throughput = {
         mul, mul_short,
         smull,
         umaal,
+        umull,
         smlal,
         mla, mls, smulwb, smulwt, smultb, smultt, smulbb, smlabt, smlabb, smlatt, smlatb, smlad, smladx, smuad, smuadx, smmulr,
         neg_short,
@@ -229,6 +233,7 @@ inverse_throughput = {
         pkhbt, pkhtb, pkhbt_shifted, ubfx_imm,
         str_with_imm,
         str_with_imm_stack,
+        strd_with_imm_stack,
         str_with_postinc,
         str_no_off,
         strh_with_imm,
@@ -279,6 +284,7 @@ default_latencies = {
         ldm_interval, ldm_interval_inc_writeback, vldm_interval_inc_writeback,
         str_with_imm,
         str_with_imm_stack,
+        strd_with_imm_stack,
         str_with_postinc,
         str_no_off,
         strh_with_imm,
@@ -289,6 +295,7 @@ default_latencies = {
         smull,
         smlal,
         umaal,
+        umull,
         mla, mls, smulwb, smulwt, smultb, smultt, smulbb, smlabt, smlabb, smlatt, smlatb, smlad, smladx, smuad, smuadx, smmulr,
         # TODO: Verify load latency
         stm_interval_inc_writeback,  # actually not, just placeholder
@@ -304,7 +311,7 @@ default_latencies = {
         ldrb_with_postinc,
         eor_shifted
     ): 2,
-    (Ldrd): 3,
+    (Ldrd,ldrd_with_imm_stack): 3,
     (vmov_gpr2, vmov_gpr2_dual): 3,
     (vmov_gpr): 1
 }
