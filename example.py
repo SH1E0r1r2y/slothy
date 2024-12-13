@@ -710,6 +710,24 @@ class Fe25519_mul(Example):
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
         slothy.optimize(start="slothy_start", end="slothy_end")
 
+class Fe25519_sqr(Example):
+    def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
+        name = "fe25519_sqr"
+        infile = name
+
+        if var != "":
+            name += f"_{var}"
+            infile += f"_{var}"
+        name += f"_{target_label_dict[target]}"
+
+        super().__init__(infile, name, rename=True, arch=arch, target=target)
+
+    def core(self,slothy):
+        slothy.config.variable_size=True
+        slothy.config.inputs_are_outputs = True
+        slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        slothy.optimize(start="slothy_start", end="slothy_end")
+
 class Armv7mLoopSubs(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
         name = "loop_subs"
@@ -1570,6 +1588,7 @@ def main():
                  Fe25519_add(),
                  Fe25519_sub(),
                  Fe25519_mul(),
+                 Fe25519_sqr(),
 
                 # Loop examples
                  AArch64LoopSubs(),

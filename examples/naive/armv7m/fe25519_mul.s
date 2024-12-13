@@ -52,11 +52,13 @@ fe25519_mul:
 	.global fe25519_mul
 
 	push {r2,lr}
-slothy_start:
+
 	//frame push {lr}
 	//frame address sp,8
 	
 	sub sp,#28
+
+slothy_start:
 	//frame address sp,36
 	ldm r2,{r2,r3,r4,r5}
 	
