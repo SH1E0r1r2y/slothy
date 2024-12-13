@@ -50,11 +50,11 @@
 fe25519_sqr:
 	.global fe25519_sqr
 	push {lr}
-slothy_start:
+
 	//frame push {lr}
 	sub sp,#20
 	//frame address sp,24
-	
+slothy_start:	
 	//mul 01, 00
 	umull r9,r10,r0,r0
 	umull r11,r12,r0,r1
