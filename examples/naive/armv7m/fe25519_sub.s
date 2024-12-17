@@ -77,3 +77,30 @@ slothy_end:
 	bx lr
 
 	.size fe25519_sub, .-fe25519_sub
+
+// void fe25519_sub_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
+// out = r0, a=r1, b=r2
+	.align 2
+	.type fe25519_sub, %function
+	.global fe25519_sub
+fe25519_sub_wrap:
+    push {r4-r11, lr}
+    push {r0}
+	
+	mov r8, r1
+	mov r9, r2
+
+	bl fe25519_sub
+	pop {r8}
+
+	ldr r0, [r8, #0]
+	ldr r1, [r8, #4]
+	ldr r2, [r8, #8]
+	ldr r3, [r8, #12]
+	ldr r4, [r8, #16]
+	ldr r5, [r8, #20]
+	ldr r6, [r8, #24]
+	ldr r7, [r8, #28]
+	
+    pop {r4-r11, lr}
+	bx lr

@@ -46,8 +46,8 @@
 // input: *r8=a, *r9=b
 // output: r0-r7
 // clobbers all other registers
-// cycles: 45
-	.type fe25519_add, %function
+// cycles: 173
+	.type fe25519_mul, %function
 fe25519_mul:
 	.global fe25519_mul
 
@@ -68,7 +68,7 @@ slothy_start:
 	umull r7,r12,r3,r0
 	umaal r7,r11,r2,r10
 	
-	push {r6,r7}
+	push {r6,r7}  //@slothy:writes=[stack1,stack2]
 	//frame address sp,44
 	
 	umull r8,r6,r4,r0
@@ -91,7 +91,7 @@ slothy_start:
 	umaal r12,r6,r4,r0
 	umaal r6,r7,r5,r0
 	
-	strd r8,r9,[sp,#8]
+	strd r8,r9,[sp,#8]  //@slothy:writes=[stack3,stack4]
 	
 	mov r9,#0
 	umaal r11,r9,r2,r10
@@ -121,7 +121,7 @@ slothy_start:
 	umaal r10,r0,r4,r8
 	umaal r6,r0,r5,r8
 	
-	push {r0}
+	push {r0}  //@slothy:writes=[stack0]
 	//frame address sp,48
 	
 	//_ _ _ _ s 6 10 9| 7 | lr 12 11 _ _ _ _
@@ -133,7 +133,7 @@ slothy_start:
 	ldr r8,[r1],#4
 	mov r0,#0
 	umaal r11,r0,r2,r8
-	str r11,[sp,#16+4]
+	str r11,[sp,#16+4]  //@slothy:writes=[stack5]
 	umaal r12,r0,r3,r8
 	umaal lr,r0,r4,r8
 	umaal r0,r7,r5,r8 // 7=carry for 9
@@ -143,7 +143,7 @@ slothy_start:
 	ldr r8,[r1],#4
 	mov r11,#0
 	umaal r12,r11,r2,r8
-	str r12,[sp,#20+4]
+	str r12,[sp,#20+4]  //@slothy:writes=[stack6]
 	umaal lr,r11,r3,r8
 	umaal r0,r11,r4,r8
 	umaal r11,r7,r5,r8 // 7=carry for 10
@@ -153,7 +153,7 @@ slothy_start:
 	ldr r8,[r1],#4
 	mov r12,#0
 	umaal lr,r12,r2,r8
-	str lr,[sp,#24+4]
+	str lr,[sp,#24+4]  //@slothy:writes=[stack7]
 	umaal r0,r12,r3,r8
 	umaal r11,r12,r4,r8
 	umaal r10,r12,r5,r8 // 12=carry for 6
@@ -163,7 +163,7 @@ slothy_start:
 	ldr r8,[r1],#4
 	mov lr,#0
 	umaal r0,lr,r2,r8
-	str r0,[sp,#28+4]
+	str r0,[sp,#28+4]  //@slothy:writes=[stack8]
 	umaal r11,lr,r3,r8
 	umaal r10,lr,r4,r8
 	umaal r6,lr,r5,r8 // lr=carry for saved
@@ -172,10 +172,10 @@ slothy_start:
 	
 	ldm r1!,{r0,r8}
 	umaal r11,r9,r2,r0
-	str r11,[sp,#32+4]
+	str r11,[sp,#32+4]  //@slothy:writes=[stack9]
 	umaal r9,r10,r3,r0
 	umaal r10,r6,r4,r0
-	pop {r11}
+	pop {r11}  //@slothy:reads=[stack0]
 	//frame address sp,44
 	umaal r11,r6,r5,r0 // 6=carry for next
 	
@@ -201,7 +201,7 @@ slothy_start:
 	
 	//now reduce
 	
-	ldrd r4,r5,[sp,#28]
+	ldrd r4,r5,[sp,#28] // @slothy:reads=[stack8,stack9]
 	movs r3,#38
 	mov r8,#0
 	umaal r4,r8,r3,r12
@@ -211,17 +211,17 @@ slothy_start:
 	movs r4,#19
 	mul r8,r8,r4
 	
-	pop {r0-r2}
+	pop {r0-r2} //@slothy:reads=[stack1,stack2,stack3]
 	//frame address sp,32
 	umaal r0,r8,r3,r5
 	umaal r1,r8,r3,r9
 	umaal r2,r8,r3,r10
 	mov r9,#38
-	pop {r3,r4}
+	pop {r3,r4}   //@slothy:reads=[stack4,stack5]
 	//frame address sp,24
 	umaal r3,r8,r9,r11
 	umaal r4,r8,r9,r6
-	pop {r5,r6}
+	pop {r5,r6}  //@slothy:reads=[stack6,stack7]
 	//frame address sp,16
 	umaal r5,r8,r9,lr
 	umaal r6,r8,r9,r7
@@ -234,3 +234,31 @@ slothy_end:
 	pop {pc}
 	
 	.size fe25519_mul, .-fe25519_mul
+
+
+// void fe25519_mul_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
+// out = r0, a=r1, b=r2
+	.align 2
+	.type fe25519_mul, %function
+	.global fe25519_mul
+fe25519_mul_wrap:
+    push {r4-r11, lr}
+    push {r0}
+	
+	mov r8, r1
+	mov r9, r2
+
+	bl fe25519_mul
+	pop {r8}
+
+	str r0, [r8, #0]
+	str r1, [r8, #4]
+	str r2, [r8, #8]
+	str r3, [r8, #12]
+	str r4, [r8, #16]
+	str r5, [r8, #20]
+	str r6, [r8, #24]
+	str r7, [r8, #28]
+	
+    pop {r4-r11, lr}
+	bx lr

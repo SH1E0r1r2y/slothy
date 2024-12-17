@@ -29,7 +29,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-
 // This is an armv7 implementation of X25519.
 // It follows the reference implementation where the representation of
 // a field element [0..2^255-19) is represented by a 256-bit little ian integer,
@@ -52,7 +51,7 @@ fe25519_sqr:
 	push {lr}
 
 	//frame push {lr}
-	sub sp,#20
+	sub sp,#20 
 	//frame address sp,24
 slothy_start:	
 	//mul 01, 00
@@ -66,7 +65,7 @@ slothy_start:
 	//r12 carry for 3rd before col
 	//r11+C carry for 3rd final col
 	
-	push {r9,r10}
+	push {r9,r10} //@slothy:writes=[stack0,stack1]
 	//frame address sp,32
 	
 	//mul 02, 11
@@ -89,7 +88,7 @@ slothy_start:
 	//r10+r12 carry for 5th before col
 	//r11+C carry for 5th final col
 	
-	strd r8,r9,[sp,#8]
+	strd r8,r9,[sp,#8] //@slothy:writes=[stack2,stack3]
 	
 	//mul 04, 13, 22
 	mov r9,#0
@@ -102,7 +101,7 @@ slothy_start:
 	//r10+r12 carry for 6th before col
 	//r11+C carry for 6th final col
 	
-	str r9,[sp,#16]
+	str r9,[sp,#16] //@slothy:writes=[stack4]
 	
 	//mul 05, 14, 23
 	umull r9,r8,r0,r5
@@ -115,7 +114,7 @@ slothy_start:
 	//r10+r12+r8 carry for 7th before col
 	//r11+C carry for 7th final col
 	
-	str r9,[sp,#20]
+	str r9,[sp,#20] //@slothy:writes=[stack5]
 	
 	//mul 06, 15, 24, 33
 	mov r9,#0
@@ -129,7 +128,7 @@ slothy_start:
 	//r8+r10+r12 carry for 8th before col
 	//r11+C carry for 8th final col
 	
-	str r9,[sp,#24]
+	str r9,[sp,#24] //@slothy:writes=[stack6]
 	
 	//mul 07, 16, 25, 34
 	umull r0,r9,r0,r7
@@ -226,7 +225,7 @@ slothy_start:
 	movs r5,#19
 	mul lr,lr,r5
 	
-	pop {r0,r1}
+	pop {r0,r1} //@slothy:reads=[stack0,stack1]
 	//frame address sp,24
 	umaal r0,lr,r6,r11
 	umaal r1,lr,r6,r12
@@ -234,7 +233,7 @@ slothy_start:
 	mov r11,r3
 	mov r12,r4
 	
-	pop {r2,r3,r4,r5}
+	pop {r2,r3,r4,r5} //@slothy:reads=[stack2,stack3,stack4,stack5] 
 	//frame address sp,8
 	umaal r2,lr,r6,r10
 	umaal r3,lr,r6,r9
@@ -242,7 +241,7 @@ slothy_start:
 	umaal r4,lr,r6,r11
 	umaal r5,lr,r6,r12
 	
-	pop {r6}
+	pop {r6} //@slothy:reads=[stack6]
 	//frame address sp,4
 	mov r12,#38
 	umaal r6,lr,r12,r8
@@ -251,3 +250,36 @@ slothy_end:
 	pop {pc}
 	
 	.size fe25519_sqr, .-fe25519_sqr
+
+
+// void fe25519_sqr_wrap(uint32_t *out)
+	.align 2
+	.type fe25519_sqr, %function
+	.global fe25519_sqr
+fe25519_sqr_wrap:
+    push {r4-r11, lr}
+    push {r0}
+	
+	ldr r1, [r0, #4] 
+	ldr r2, [r0, #8]
+	ldr r3, [r0, #12]
+	ldr r4, [r0, #16
+	ldr r5, [r0, #20]
+	ldr r6, [r0, #24]
+	ldr r7, [r0, #28]
+	ldr r0, [r0] 
+
+	bl fe25519_sqr
+	pop {r8}
+
+	str r0, [r8, #0]
+	str r1, [r8, #4]
+	str r2, [r8, #8]
+	str r3, [r8, #12]
+	str r4, [r8, #16]
+	str r5, [r8, #20]
+	str r6, [r8, #24]
+	str r7, [r8, #28]
+	
+    pop {r4-r11, lr}
+	bx lr
