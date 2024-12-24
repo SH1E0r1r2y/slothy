@@ -106,7 +106,7 @@ fe25519_sub_opt_m7:
 
  bx lr
 
- .size fe25519_sub, .-fe25519_sub
+ .size fe25519_sub_wrap, .-fe25519_sub_wrap
 
 // void fe25519_sub_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
 // out = r0, a=r1, b=r2

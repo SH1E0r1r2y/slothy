@@ -81,8 +81,8 @@ slothy_end:
 // void fe25519_sub_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
 // out = r0, a=r1, b=r2
 	.align 2
-	.type fe25519_sub, %function
-	.global fe25519_sub
+	.type fe25519_sub_wrap, %function
+	.global fe25519_sub_wrap
 fe25519_sub_wrap:
     push {r4-r11, lr}
     push {r0}

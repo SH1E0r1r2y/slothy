@@ -254,8 +254,8 @@ slothy_end:
 
 // void fe25519_sqr_wrap(uint32_t *out)
 	.align 2
-	.type fe25519_sqr, %function
-	.global fe25519_sqr
+	.type fe25519_sqr_wrap, %function
+	.global fe25519_sqr_wrap
 fe25519_sqr_wrap:
     push {r4-r11, lr}
     push {r0}
@@ -263,7 +263,7 @@ fe25519_sqr_wrap:
 	ldr r1, [r0, #4] 
 	ldr r2, [r0, #8]
 	ldr r3, [r0, #12]
-	ldr r4, [r0, #16
+	ldr r4, [r0, #16]
 	ldr r5, [r0, #20]
 	ldr r6, [r0, #24]
 	ldr r7, [r0, #28]

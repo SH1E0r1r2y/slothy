@@ -673,6 +673,7 @@ class Fe25519_add(Example):
         slothy.config.inputs_are_outputs = True
         slothy.config.constraints.functional_only = True
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        #slothy.fusion_region("slothy_start", "slothy_end", ssa=False)
         slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Fe25519_sub(Example):
