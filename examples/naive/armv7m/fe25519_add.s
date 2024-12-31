@@ -48,8 +48,8 @@
 // clobbers all other registers
 // cycles: 45
 	.type fe25519_add, %function
-fe25519_add:
 	.global fe25519_add
+fe25519_add:
 
 slothy_start:
 
@@ -97,14 +97,14 @@ fe25519_add_wrap:
 	bl fe25519_add
 	pop {r8}
 
-	ldr r0, [r8, #0]
-	ldr r1, [r8, #4]
-	ldr r2, [r8, #8]
-	ldr r3, [r8, #12]
-	ldr r4, [r8, #16]
-	ldr r5, [r8, #20]
-	ldr r6, [r8, #24]
-	ldr r7, [r8, #28]
+	str r0, [r8, #0]
+	str r1, [r8, #4]
+	str r2, [r8, #8]
+	str r3, [r8, #12]
+	str r4, [r8, #16]
+	str r5, [r8, #20]
+	str r6, [r8, #24]
+	str r7, [r8, #28]
 	
     pop {r4-r11, lr}
 	bx lr

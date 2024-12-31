@@ -233,7 +233,6 @@ slothy_end:
 
 	pop {pc}
 	
-	.size fe25519_mul, .-fe25519_mul
 
 
 // void fe25519_mul_wrap(uint32_t *out, uint32_t *a, uint32_t *b)

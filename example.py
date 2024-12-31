@@ -669,11 +669,18 @@ class Fe25519_add(Example):
         super().__init__(infile, name, rename=True, arch=arch, target=target)
 
     def core(self,slothy):
+        r = slothy.config.reserved_regs
+        r.add("r14")
+        slothy.config.reserved_regs = r
         slothy.config.variable_size=True
         slothy.config.inputs_are_outputs = True
-        slothy.config.constraints.functional_only = True
+        slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
         #slothy.fusion_region("slothy_start", "slothy_end", ssa=False)
+        # if self.rename:
+        #     slothy.rename_function(
+        #         "fe25519_add_wrap", f"fe25519_add_opt_m7_wrap"
+        #     )
         slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Fe25519_sub(Example):
@@ -689,10 +696,17 @@ class Fe25519_sub(Example):
         super().__init__(infile, name, rename=True, arch=arch, target=target)
 
     def core(self,slothy):
+        r = slothy.config.reserved_regs
+        r.add("r14")
+        slothy.config.reserved_regs = r        
         slothy.config.variable_size=True
         slothy.config.inputs_are_outputs = True
-        slothy.config.constraints.functional_only = True
+        slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        # if self.rename:
+        #     slothy.rename_function(
+        #         "fe25519_sub_wrap", f"fe25519_sub_opt_m7_wrap"
+        #     )
         slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Fe25519_mul(Example):
@@ -708,11 +722,15 @@ class Fe25519_mul(Example):
         super().__init__(infile, name, rename=True, arch=arch, target=target)
 
     def core(self,slothy):
+        slothy.config.split_heuristic = True
+        slothy.config.split_heuristic_factor = 2
         slothy.config.variable_size=True
         slothy.config.inputs_are_outputs = True
-        slothy.config.constraints.functional_only = True
+        slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        slothy.rename_function("fe25519_add_wrap", "fe25519_add_opt_m7_wrap")
         slothy.optimize(start="slothy_start", end="slothy_end")
+        
 
 class Fe25519_sqr(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
@@ -727,9 +745,14 @@ class Fe25519_sqr(Example):
         super().__init__(infile, name, rename=True, arch=arch, target=target)
 
     def core(self,slothy):
+        # r = slothy.config.reserved_regs
+        # r.add("r14")
+        # slothy.config.reserved_regs = r
+        slothy.config.split_heuristic = True
+        slothy.config.split_heuristic_factor = 2
         slothy.config.variable_size=True
         slothy.config.inputs_are_outputs = True
-        slothy.config.constraints.functional_only = True
+        slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
         slothy.optimize(start="slothy_start", end="slothy_end")
 

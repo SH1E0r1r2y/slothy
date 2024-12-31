@@ -34,6 +34,7 @@
 
 
 fe25519_sub:
+	.type fe25519_sub, %function
 	.global fe25519_sub
 slothy_start:
 	ldm r8, {r0-r7}
@@ -76,7 +77,7 @@ slothy_start:
 slothy_end:
 	bx lr
 
-	.size fe25519_sub, .-fe25519_sub
+
 
 // void fe25519_sub_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
 // out = r0, a=r1, b=r2
@@ -93,14 +94,14 @@ fe25519_sub_wrap:
 	bl fe25519_sub
 	pop {r8}
 
-	ldr r0, [r8, #0]
-	ldr r1, [r8, #4]
-	ldr r2, [r8, #8]
-	ldr r3, [r8, #12]
-	ldr r4, [r8, #16]
-	ldr r5, [r8, #20]
-	ldr r6, [r8, #24]
-	ldr r7, [r8, #28]
+	str r0, [r8, #0]
+	str r1, [r8, #4]
+	str r2, [r8, #8]
+	str r3, [r8, #12]
+	str r4, [r8, #16]
+	str r5, [r8, #20]
+	str r6, [r8, #24]
+	str r7, [r8, #28]
 	
     pop {r4-r11, lr}
 	bx lr

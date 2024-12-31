@@ -249,7 +249,6 @@ slothy_start:
 slothy_end:	
 	pop {pc}
 	
-	.size fe25519_sqr, .-fe25519_sqr
 
 
 // void fe25519_sqr_wrap(uint32_t *out)
