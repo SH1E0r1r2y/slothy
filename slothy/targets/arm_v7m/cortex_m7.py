@@ -56,10 +56,16 @@ def add_further_constraints(slothy):
     add_st_hazard(slothy)
 
     add_dsp_slot_constraint(slothy)
+    add_mac_slot_constraint(slothy)
 
 def add_dsp_slot_constraint(slothy):
     slothy.restrict_slots_for_instructions_by_class(
         [pkhbt, pkhtb, pkhbt_shifted, ubfx_imm, uadd16, usub16, sadd16, ssub16], [0])
+
+def add_mac_slot_constraint(slothy):
+    slothy.restrict_slots_for_instructions_by_class(
+        [mul, mul_short, smull, smlal, mla, mls, smulwb, smulwt, smultb, smultt,
+     smulbb, smlabt, smlabb, smlatt, smlad, smladx, smuad, smuadx, smmulr], [1])
 
 # TODO: this seems incorrect
 def add_slot_constraints(slothy):
@@ -156,7 +162,7 @@ execution_units = {
         add_imm_short,
         sbc_short,
         sbcs_short,
-        sub, subs_short,subs_imm_short, sub_imm_short,
+        sub, subs_imm, subs_short,subs_imm_short, sub_imm_short,
         sub_short,
         neg_short,
         log_and,
@@ -169,6 +175,7 @@ execution_units = {
         cmp, cmp_imm,
         # To do: To do: Not sure where to put the 'pop' and 'push' classes.the book?
         pop,push,
+        bne
     ): ExecutionUnit.ALU(),
     (ror, ror_short, rors_short, lsl, asr, asrs): [[ExecutionUnit.ALU0], [ExecutionUnit.ALU1]],
     (mul, mul_short, smull, umaal, umull,smlal, mla, mls, smulwb, smulwt, smultb, smultt,
@@ -219,6 +226,7 @@ inverse_throughput = {
         sub_short,
         sub_imm_short,
         subs_short,
+        subs_imm,
         subs_imm_short,
         uadd16, sadd16, usub16, ssub16,
         mul, mul_short,
@@ -249,6 +257,7 @@ inverse_throughput = {
         strh_with_imm,
         strh_with_postinc,
         pop,push,
+        bne
 
     ): 1,
     (
@@ -283,6 +292,7 @@ default_latencies = {
         sub_imm_short,
         sub_short,
         subs_short,
+        subs_imm,
         subs_imm_short,
         uadd16, sadd16, usub16, ssub16,
         neg_short,
@@ -307,6 +317,7 @@ default_latencies = {
         strh_with_imm,
         strh_with_postinc,
         pop,push,
+        bne
     ): 1,
     (
         mul, mul_short,
@@ -344,12 +355,16 @@ def get_latency(src, out_idx, dst):
     latency = lookup_multidict(default_latencies, src)
 
     # Forwarding path to MAC instructions
-    if instclass_dst in [mla, mls, smlabb, smlabt, smlatt, smlatb] and src.args_out[0] == dst.args_in[2]:
+    if instclass_dst in [mla, mls, smlabb, smlabt, smlatt, smlatb] and dst.args_in[2] in (src.args_out + src.args_in_out):
         latency =  latency - 1
 
-    if instclass_dst in [smlal] and \
-            (src.args_out[0] == dst.args_in_out[0] or src.args_out[0] == dst.args_in_out[1]):
-        latency = latency - 1
+    if instclass_dst in [smlal]:
+        if len(src.args_out) > 1:
+            if (src.args_out[0] == dst.args_in_out[0] or src.args_out[0] == dst.args_in_out[1]):
+                latency = latency - 1
+        elif len(src.args_in_out) > 1:
+            if (src.args_in_out[0] == dst.args_in_out[0] or src.args_in_out[0] == dst.args_in_out[1]):
+                latency = latency - 1
 
     # Multiply accumulate chain latency is 1
     # TODO: verify this for umaal
@@ -376,6 +391,10 @@ def get_latency(src, out_idx, dst):
     # Load and store multiples take a long time to complete
     if instclass_src in [ldm_interval, ldm_interval_inc_writeback, stm_interval_inc_writeback, vldm_interval_inc_writeback]:
         latency = src.num_out
+        
+    # Flag setting -> branch has at least 3 latency
+    if instclass_src in [subs_imm, subs_imm_short, cmp, cmp_imm] and instclass_dst == bne:
+        latency = 2
 
     # Can always store result in the same cycle
     # TODO: double-check this

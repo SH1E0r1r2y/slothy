@@ -27,6 +27,7 @@
 
 import logging
 import math
+import os
 import time
 
 from types import SimpleNamespace
@@ -38,7 +39,13 @@ import ortools
 from ortools.sat.python import cp_model
 
 from slothy.core.config import Config
-from slothy.helper import LockAttributes, Permutation, DeferHandler, SourceLine
+from slothy.helper import LockAttributes, Permutation, DeferHandler, SourceLine, LLVM_Mc, SelfTest, SelfTestException
+
+try:
+    from unicorn import *
+    from unicorn.arm_const import *
+except ImportError:
+    Uc = None
 
 from slothy.core.dataflow import DataFlowGraph as DFG
 from slothy.core.dataflow import Config as DFGConfig
@@ -47,6 +54,9 @@ from slothy.core.dataflow import SlothyUselessInstructionException
 
 class SlothyException(Exception):
     """Generic exception thrown by SLOTHY"""
+
+class SlothySelfCheckException(SlothyException):
+    """Exception thrown by SLOTHY during tht selfcheck """
 
 class Result(LockAttributes):
     """The results of a one-shot SLOTHY optimization run"""
@@ -818,6 +828,82 @@ class Result(LockAttributes):
             raise SlothySelfCheckException("Isomorphism between computation flow graphs: FAIL!")
         return res
 
+    def selftest(self, log):
+        """Run empirical self test, if it exists for the target architecture"""
+        if self._config.selftest is False:
+            return
+
+        if Uc is None:
+            raise SlothySelfTestException("Cannot run selftest -- unicorn-engine is not available.")
+
+        if self._config.arch.unicorn_arch is None or \
+           self._config.arch.llvm_mc_arch is None:
+            log.warning("Selftest not supported on target architecture")
+            return
+
+        tree = DFG(self._orig_code, log, DFGConfig(self.config, outputs=self.outputs))
+
+        if tree.has_symbolic_registers():
+            log.info("Skipping selftest as input contains symbolic registers.")
+            return
+
+        log.info(f"Running selftest ({self._config.selftest_iterations} iterations)...")
+
+        address_registers = self._config.selftest_address_registers
+        if address_registers is None:
+            # Try to infer which registes need to be pointers
+            # Look for load/store instructions and remember addresses
+            addresses = set()
+            for t in tree.nodes:
+                addr = getattr(t.inst, "addr", None)
+                if addr is None:
+                    continue
+                addresses = addresses.union(tree.find_all_predecessors_input_registers(t, addr))
+
+            # For now, we don't look into increments and immedate offsets
+            # to gauge the amount of memory we actually need. Instaed, we
+            # just allocate a buffer of a configurable default size.
+            log.info(f"Inferred that the following registers seem to act as pointers: {addresses}")
+            log.info(f"Using default buffer size of {self._config.selftest_default_memory_size} bytes. "
+                     "If you want different buffer sizes, set selftest_address_registers manually.")
+            address_registers = { a: self._config.selftest_default_memory_size for a in addresses }
+
+        # This produces _unrolled_ code, the same that is checked in the selfcheck.
+        # The selftest should instead use the rolled form of the loop.
+        iterations = 7
+        if self.config.sw_pipelining.enabled is True:
+            old_source, new_source = self.get_fully_unrolled_loop(iterations)
+
+            dfgc_preamble = DFGConfig(self.config, outputs=self.kernel_input_output)
+            dfgc_preamble.inputs_are_outputs = False
+            preamble_dfg = DFG(self.preamble, log, dfgc_preamble)
+
+            if preamble_dfg.has_symbolic_registers():
+                log.info("Skipping selftest as preamble contains symbolic registers.")
+                return
+
+            dfgc_postamble = DFGConfig(self.config, outputs=self.orig_outputs)
+            postamble_dfg = DFG(self.postamble, log.getChild("new_postamble"), dfgc_postamble)
+
+            if postamble_dfg.has_symbolic_registers():
+                log.info("Skipping selftest as postamble contains symbolic registers.")
+                return
+        else:
+            old_source, new_source = self.orig_code, self.code
+
+        # Check if register contents are the same
+        regs_expected = set(self.config.outputs).union(self.config.reserved_regs)
+        # Ignore hint registers, flags and sp for now
+        regs_expected = set(filter(lambda t: t.startswith("t") is False and
+                                         t != "sp" and t != "flags", regs_expected))
+
+        # filter out branches
+        old_source = [l for l in old_source if not l.tags.get('branch')]
+        new_source = [l for l in new_source if not l.tags.get('branch')]
+
+        SelfTest.run(self.config, log, old_source, new_source, address_registers, regs_expected,
+                     self.config.selftest_iterations)
+
     def selfcheck_with_fixup(self, log):
         """Do selfcheck, and consider preamble/postamble fixup in case of SW pipelining
 
@@ -1311,9 +1397,6 @@ class Result(LockAttributes):
         self._restores = {}
 
         self.lock()
-
-class SlothySelfCheckException(Exception):
-    """Exception thrown upon selfcheck failures"""
 
 class SlothyBase(LockAttributes):
     """Stateless core of SLOTHY.
@@ -1874,6 +1957,8 @@ class SlothyBase(LockAttributes):
         self._extract_code()
         self._result.selfcheck_with_fixup(self.logger.getChild("selfcheck"))
         self._result.offset_fixup(self.logger.getChild("fixup"))
+
+        self._result.selftest(self.logger.getChild("selftest"))
 
     def _extract_positions(self, get_value):
 
@@ -2716,6 +2801,13 @@ class SlothyBase(LockAttributes):
                              self.config.sw_pipelining.min_overlapping )
 
         for t in self._get_nodes():
+            # If there is a instruction tagged with "branch" in the kernel, we
+            # must ensure that it gets placed at the very end of the loop.
+            if self._is_low(t):
+                if t.inst.source_line.tags.get("branch", []):
+                    self._Add( t.program_start_var ==
+                             self._model.program_padded_size_half - 1 )
+                
 
             self._AddExactlyOne([t.pre_var, t.post_var, t.core_var])
 
@@ -2952,7 +3044,7 @@ class SlothyBase(LockAttributes):
             if isinstance(latency, int):
                 self.logger.debug("General latency constraint: [%s] >= [%s] + %d",
                     t, i.src, latency)
-                # Some microarchitectures have instructions with 0-cycle latency, i.e., the can 
+                # Some microarchitectures have instructions with 0-cycle latency, i.e., the can
                 # forward the result to an instruction in the same cycle (e.g., X+str on Cortex-M7)
                 # If that is the case we need to make sure that the consumer is after the producer
                 # in the output.

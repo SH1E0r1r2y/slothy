@@ -1,16 +1,25 @@
 import logging
 import inspect
+import os
 import re
 import math
 import itertools
 from enum import Enum
 from functools import cache
 
-from slothy.helper import SourceLine, Loop
+from unicorn import *
+from unicorn.arm_const import *
+
+from slothy.helper import SourceLine, Loop, LLVM_Mc
 from sympy import simplify
 
-llvm_mca_arch = "arm"  # TODO
+arch_name = "Arm_v7M"
+llvm_mca_arch = "arm"
+llvm_mc_arch = "thumb"
+llvm_mc_attr = "armv7e-m,thumb2,dsp,fpregs"
 
+unicorn_arch = UC_ARCH_ARM
+unicorn_mode = UC_MODE_THUMB | UC_MODE_MCLASS
 
 class RegisterType(Enum):
     GPR = 1
@@ -27,6 +36,79 @@ class RegisterType(Enum):
     @staticmethod
     def spillable(reg_type):
         return reg_type in [RegisterType.GPR]
+
+    @staticmethod
+    def callee_saved_registers():
+        return [f"r{i}" for i in range(4,12)] + [f"s{i}" for i in range(0,16)]
+
+    @staticmethod
+    def unicorn_link_register():
+        return UC_ARM_REG_LR
+
+    @staticmethod
+    def unicorn_program_counter():
+        return UC_ARM_REG_PC
+
+    @staticmethod
+    def unicorn_stack_pointer():
+        return UC_ARM_REG_SP
+
+    @cache
+    @staticmethod
+    def unicorn_reg_by_name(reg):
+        """Converts string name of register into numerical identifiers used
+        within the unicorn engine"""
+
+        d = {
+            "r0":  UC_ARM_REG_R0,
+            "r1":  UC_ARM_REG_R1,
+            "r2":  UC_ARM_REG_R2,
+            "r3":  UC_ARM_REG_R3,
+            "r4":  UC_ARM_REG_R4,
+            "r5":  UC_ARM_REG_R5,
+            "r6":  UC_ARM_REG_R6,
+            "r7":  UC_ARM_REG_R7,
+            "r8":  UC_ARM_REG_R8,
+            "r9":  UC_ARM_REG_R9,
+            "r10": UC_ARM_REG_R10,
+            "r11": UC_ARM_REG_R11,
+            "r12": UC_ARM_REG_R12,
+            "r13": UC_ARM_REG_SP,
+            "r14": UC_ARM_REG_LR,
+            "s0":  UC_ARM_REG_S0,
+            "s1":  UC_ARM_REG_S1,
+            "s2":  UC_ARM_REG_S2,
+            "s3":  UC_ARM_REG_S3,
+            "s4":  UC_ARM_REG_S4,
+            "s5":  UC_ARM_REG_S5,
+            "s6":  UC_ARM_REG_S6,
+            "s7":  UC_ARM_REG_S7,
+            "s8":  UC_ARM_REG_S8,
+            "s9":  UC_ARM_REG_S9,
+            "s10": UC_ARM_REG_S10,
+            "s11": UC_ARM_REG_S11,
+            "s12": UC_ARM_REG_S12,
+            "s13": UC_ARM_REG_S13,
+            "s14": UC_ARM_REG_S14,
+            "s15": UC_ARM_REG_S15,
+            "s16": UC_ARM_REG_S16,
+            "s17": UC_ARM_REG_S17,
+            "s18": UC_ARM_REG_S18,
+            "s19": UC_ARM_REG_S19,
+            "s20": UC_ARM_REG_S20,
+            "s21": UC_ARM_REG_S21,
+            "s22": UC_ARM_REG_S22,
+            "s23": UC_ARM_REG_S23,
+            "s24": UC_ARM_REG_S24,
+            "s25": UC_ARM_REG_S25,
+            "s26": UC_ARM_REG_S26,
+            "s27": UC_ARM_REG_S27,
+            "s28": UC_ARM_REG_S28,
+            "s29": UC_ARM_REG_S29,
+            "s30": UC_ARM_REG_S30,
+            "s31": UC_ARM_REG_S31,
+        }
+        return d.get(reg, None)
 
     @cache
     @staticmethod
@@ -215,6 +297,106 @@ class VmovCmpLoop(Loop):
         yield f'{indent}cmp {other["cnt"]}, {other["end"]}'
         yield f'{indent}bne {lbl_start}'
 
+
+class BranchLoop(Loop):
+    """
+    More general loop type that just considers the branch instruction as part of the boundary.
+    This can help to improve performance as the instructions that belong to handling the loop can be considered by SLOTHY aswell. 
+    
+    Note: This loop type is still rather experimental. It has a lot of logics inside as it needs to be able to "understand" a variety of different ways to express loops, e.g., how counters get incremented, how registers marking the end of the loop need to be modified in case of software pipelining etc. Currently, this type covers the three other types we offer above, namely `SubsLoop`, `CmpLoop`, and `VmovCmpLoop`. 
+
+    For examples, we refer to the classes `SubsLoop`, `CmpLoop`, and `VmovCmpLoop`. 
+ """
+    def __init__(self, lbl="lbl", lbl_start="1", lbl_end="2", loop_init="lr") -> None:
+        super().__init__(lbl_start=lbl_start, lbl_end=lbl_end, loop_init=loop_init)
+        self.lbl = lbl
+        self.lbl_regex = r"^\s*(?P<label>\w+)\s*:(?P<remainder>.*)$"
+        # Defines the end of the loop, boolean indicates whether the instruction
+        # shall be considered part of the body or not.
+        self.end_regex = ((rf"^\s*(cbnz|cbz|bne)(?:\.w)?\s+{lbl}", True),)
+
+    def start(self, loop_cnt, indentation=0, fixup=0, unroll=1, jump_if_empty=None, preamble_code=None, body_code=None, postamble_code=None, register_aliases=None):
+        """Emit starting instruction(s) and jump label for loop"""
+        indent = ' ' * indentation
+        if body_code is None:
+            logging.debug(f"No body code in loop start: Just printing label.")
+            yield f"{self.lbl}:"
+            return
+        # Identify the register that is used as a loop counter
+        body_code = [l for l in body_code if l.text != ""]
+        for l in body_code:
+            inst = Instruction.parser(l)
+            # Flags are set through cmp
+            # LIMITATION: By convention, we require the first argument to be the
+            # "counter" and the second the one marking the iteration end.
+            if isinstance(inst[0], cmp):
+                # Assume this mapping
+                loop_cnt_reg = inst[0].args_in[0]
+                loop_end_reg = inst[0].args_in[1]
+                logging.debug(f"Assuming {loop_cnt_reg} as counter register and {loop_end_reg} as end register.")
+                break
+            # Flags are set through subs
+            elif isinstance(inst[0], subs_imm_short):
+                loop_cnt_reg = inst[0].args_in_out[0]
+                loop_end_reg = inst[0].args_in_out[0]
+                break
+            elif isinstance(inst[0], subs_imm):
+                loop_cnt_reg = inst[0].args_out[0]
+                loop_end_reg = inst[0].args_out[0]
+                break
+
+        # Find FPR that is used to stash the loop end incase it's vmov loop
+        loop_end_reg_fpr = None
+        for li, l in enumerate(body_code):
+            inst = Instruction.parser(l)
+            # Flags are set through cmp
+            if isinstance(inst[0], vmov_gpr):
+                if loop_end_reg in inst[0].args_out:
+                    logging.debug(f"Copying from {inst[0].args_in} to {loop_end_reg}")
+                    loop_end_reg_fpr = inst[0].args_in[0]
+
+            # The last vmov occurance before the cmp that writes to the register
+            # we compare to will be the right one. The same GPR could be written
+            # previously due to renaming, before it becomes the value used in
+            # the cmp.
+            if isinstance(inst[0], cmp):
+                break
+
+        if unroll > 1:
+            assert unroll in [1,2,4,8,16,32]
+            yield f"{indent}lsr {loop_end_reg}, {loop_end_reg}, #{int(math.log2(unroll))}"
+
+        inc_per_iter = 0
+        for l in body_code:
+            inst = Instruction.parser(l)
+            # Increment happens through pointer modification
+            if loop_cnt_reg.lower() == inst[0].addr and inst[0].increment is not None:
+                inc_per_iter = inc_per_iter + simplify(inst[0].increment)
+            # Increment through explicit modification
+            elif loop_cnt_reg.lower() in (inst[0].args_out + inst[0].args_in_out) and inst[0].immediate is not None:
+                # TODO: subtract if we have a subtraction
+                inc_per_iter = inc_per_iter + simplify(inst[0].immediate)
+        logging.debug(f"Loop counter {loop_cnt_reg} is incremented by {inc_per_iter} per iteration.")
+
+        if fixup != 0 and loop_end_reg_fpr is not None:
+            yield f"{indent}push {{{loop_end_reg}}}"
+            yield f"{indent}vmov {loop_end_reg}, {loop_end_reg_fpr}"
+
+        if fixup != 0:
+            yield f"{indent}sub {loop_end_reg}, {loop_end_reg}, #{fixup*inc_per_iter}"
+
+        if fixup != 0 and loop_end_reg_fpr is not None:
+            yield f"{indent}vmov {loop_end_reg_fpr}, {loop_end_reg}"
+            yield f"{indent}pop {{{loop_end_reg}}}"
+
+        if jump_if_empty is not None:
+            yield f"cbz {loop_cnt}, {jump_if_empty}"
+        yield f"{self.lbl}:"
+
+    def end(self, other, indentation=0):
+        """Nothing to do here"""
+        yield ""
+
 class CmpLoop(Loop):
     """
     Loop ending in a compare and a branch.
@@ -398,6 +580,7 @@ class Instruction:
         self.flag = None
         self.width = None
         self.barrel = None
+        self.label = None
         self.reg_list = None
 
     def extract_read_writes(self):
@@ -591,6 +774,11 @@ class Instruction:
 
         for i in insts:
             i.source_line = src_line
+
+            # Mark as branch for BranchLoop
+            if isinstance(i, Armv7mBranch):
+                i.source_line.tags['branch'] = True
+
             i.extract_read_writes()
 
         if len(insts) == 0:
@@ -616,7 +804,7 @@ class Armv7mInstruction(Instruction):
 
     @staticmethod
     def _unfold_pattern(src):
-
+        src = re.sub(r", +",  ",", src)
         src = re.sub(r"\.",  "\\\\s*\\\\.\\\\s*", src)
         src = re.sub(r"\[", "\\\\s*\\\\[\\\\s*", src)
         src = re.sub(r"\]", "\\\\s*\\\\]\\\\s*", src)
@@ -650,13 +838,14 @@ class Armv7mInstruction(Instruction):
         dt_pattern = "(?:|2|4|8|16)(?:B|H|S|D|b|h|s|d)"  # TODO: Notion of dt can be placed with notion for size in FP instructions
         imm_pattern = "\\\\s*#(\\\\w|\\\\s|/| |-|\\*|\\+|\\(|\\)|=|,)+"
         index_pattern = "[0-9]+"
-        width_pattern = "(?:\.w|\.n|)"
+        width_pattern = r"(?:\.w|\.n|)"
         barrel_pattern = "(?:lsl|ror|lsr|asr)\\\\s*"
+        label_pattern = r"(?:\\w+)"
 
         # reg_list is <range>(,<range>)*
         # range is [rs]NN(-rsMM)?
         range_pat = "([rs]\\\\d+)(-[rs](\\\\d+))?"
-        reg_list_pattern = "\{"+ range_pat + "(," + range_pat + ")*" +"\}"
+        reg_list_pattern = "\{"+ range_pat + "(," + range_pat + ")*" + "\}"
 
         src = re.sub(" ", "\\\\s+", src)
         src = re.sub(",", "\\\\s*,\\\\s*", src)
@@ -667,6 +856,7 @@ class Armv7mInstruction(Instruction):
         src = replace_placeholders(src, "flag", flag_pattern, "flag") # TODO: Are any changes required for IT syntax?
         src = replace_placeholders(src, "width", width_pattern, "width")
         src = replace_placeholders(src, "barrel", barrel_pattern, "barrel")
+        src = replace_placeholders(src, "label", label_pattern, "label")
         src = replace_placeholders(src, "reg_list", reg_list_pattern, "reg_list")
 
         src = r"\s*" + src + r"\s*(//.*)?\Z"
@@ -844,6 +1034,7 @@ class Armv7mInstruction(Instruction):
         group_to_attribute('flag', 'flag')
         group_to_attribute('width', 'width')
         group_to_attribute('barrel', 'barrel')
+        group_to_attribute('label', 'label')
         group_to_attribute('reg_list', 'reg_list')
 
         for s, ty in obj.pattern_inputs:
@@ -917,12 +1108,15 @@ class Armv7mInstruction(Instruction):
         out = replace_pattern(out, "index", "index", str)
         out = replace_pattern(out, "width", "width", lambda x: x.lower())
         out = replace_pattern(out, "barrel", "barrel", lambda x: x.lower())
+        out = replace_pattern(out, "label", "label")
         out = replace_pattern(out, "reg_list", "reg_list", lambda x: x.lower())
 
         out = out.replace("\\[", "[")
         out = out.replace("\\]", "]")
         return out
 
+class Armv7mBranch(Armv7mInstruction): # pylint: disable=missing-docstring,invalid-name
+    pass
 class Armv7mBasicArithmetic(Armv7mInstruction): # pylint: disable=missing-docstring,invalid-name
     pass
 class Armv7mShiftedArithmetic(Armv7mInstruction): # pylint: disable=missing-docstring,invalid-name
@@ -1406,6 +1600,13 @@ class ldr_with_imm(Armv7mLoadInstruction): # pylint: disable=missing-docstring,i
 
     def write(self):
         self.immediate = simplify(self.pre_index)
+
+        if self.immediate < 0:
+            # if immediate is < 0, the encoding is 32-bit anyway
+            # and the .w has no meaning.
+            # LLVM complains about the .w in this case
+            # TODO: This actually seems to be a bug in LLVM
+            self.width = ""
         return super().write()
 
 class ldrb_with_imm(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-name
@@ -1550,7 +1751,7 @@ class ldr_with_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missing-d
         return obj
 
 class ldm_interval(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-name
-    pattern = "ldm<width> <Ra>,<reg_list>"
+    pattern = "ldm<width> <Ra>, <reg_list>"
     inputs = ["Ra"]
     outputs = []
 
@@ -1574,7 +1775,7 @@ class ldm_interval(Armv7mLoadInstruction): # pylint: disable=missing-docstring,i
         return obj
 
 class ldm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-name
-    pattern = "ldm<width> <Ra>!,<reg_list>"
+    pattern = "ldm<width> <Ra>!, <reg_list>"
     in_outs = ["Ra"]
     outputs = []
 
@@ -1628,7 +1829,7 @@ class vldr_with_postinc(Armv7mLoadInstruction): # pylint: disable=missing-docstr
         return obj
 
 class vldm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-name
-    pattern = "vldm<width> <Ra>!,<reg_list>"
+    pattern = "vldm<width> <Ra>!, <reg_list>"
     in_outs = ["Ra"]
     outputs = []
     def write(self):
@@ -1648,7 +1849,7 @@ class vldm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=miss
         obj.increment = obj.num_out * 4
 
         available_regs = RegisterType.list_registers(RegisterType.FPR)
-        obj.args_out_combinations =  [ (list(range(0, obj.num_out)), [list(a) for a in itertools.combinations(available_regs, obj.num_out)])]
+        obj.args_out_combinations =  [ ( list(range(0, obj.num_out)), [ [ f"s{i+j}" for i in range(0, obj.num_out)] for j in range(0, len(available_regs)-obj.num_out) ] )]
         obj.args_out_restrictions = [ None for _ in range(obj.num_out)    ]
         return obj
 # Store
@@ -1701,6 +1902,14 @@ class str_with_imm(Armv7mStoreInstruction): # pylint: disable=missing-docstring,
 
     def write(self):
         self.immediate = simplify(self.pre_index)
+
+        if self.immediate < 0:
+            # if immediate is < 0, the encoding is 32-bit anyway
+            # and the .w has no meaning.
+            # LLVM complains about the .w in this case
+            # TODO: This actually seems to be a bug in LLVM
+            self.width = ""
+
         return super().write()
 
 class str_with_imm_stack(Armv7mStoreInstruction): # pylint: disable=missing-docstring,invalid-name
@@ -1760,7 +1969,7 @@ class strh_with_postinc(Armv7mStoreInstruction): # pylint: disable=missing-docst
         return obj
 
 class stm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-name
-    pattern = "stm<width> <Ra>!,<reg_list>"
+    pattern = "stm<width> <Ra>!, <reg_list>"
     in_outs = ["Ra"]
     outputs = []
 
@@ -1781,7 +1990,7 @@ class stm_interval_inc_writeback(Armv7mLoadInstruction): # pylint: disable=missi
         obj.increment = obj.num_in * 4
 
         available_regs = RegisterType.list_registers(RegisterType.GPR)
-        obj.args_in_combinations =  [ (list(range(0, obj.num_in)), [list(a) for a in itertools.combinations(available_regs, obj.num_in)])]
+        obj.args_in_combinations =  [ ( list(range(0, obj.num_in)), [ [ f"s{i+j}" for i in range(0, obj.num_in)] for j in range(0, len(available_regs)-obj.num_in) ] )]
         obj.args_in_restrictions = [ None for _ in range(obj.num_in)    ]
         return obj
 # Other
@@ -1795,6 +2004,10 @@ class cmp_imm(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invali
     pattern = "cmp<width> <Ra>,<imm>"
     inputs = ["Ra"]
     modifiesFlags=True
+    
+class bne(Armv7mBranch): # pylint: disable=missing-docstring,invalid-name
+    pattern = "bne<width> <label>"
+    dependsOnFlags=True
 
 # TODO: model depenency through stack correctly
 class push(Armv7mBasicArithmetic): # pylint: disable=missing-docstring,invalid-name

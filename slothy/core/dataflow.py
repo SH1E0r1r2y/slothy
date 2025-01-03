@@ -525,7 +525,18 @@ class DataFlowGraph:
                 break
 
             z = filter(lambda x: x.delete is False, self.nodes)
-            z = map(lambda x: ([x.inst], x.inst.source_line), z)
+
+            def pair_with_source(i):
+                return ([i], i.source_line)
+            def map_node(t):
+                s = t.inst
+                if not isinstance(t.inst, list):
+                    s = [s]
+                return map(pair_with_source, s)
+            def flatten(llst):
+                return [x for y in llst for x in y]
+
+            z = flatten(map(map_node, z))
 
             self.src = list(z)
 
@@ -751,6 +762,42 @@ class DataFlowGraph:
                 t.inst.args_in[i] = v.reduce().name()
             for i,v in enumerate(t.src_in_out):
                 t.inst.args_in_out[i] = v.reduce().name()
+
+    def has_symbolic_registers(self):
+        rt = self.config._arch.RegisterType
+        for i in self.nodes:
+            instr = i.inst
+            for out, ty in zip(instr.args_out, instr.arg_types_out):
+                if out not in rt.list_registers(ty):
+                    return True
+            for inout, ty in zip(instr.args_in_out, instr.arg_types_in_out):
+                if inout not in rt.list_registers(ty):
+                    return True
+        return False
+
+    def find_all_predecessors_input_registers(self, consumer, register_name):
+        """ recursively finds the set of input registers registers that a certain value depends on."""
+        # ignore the stack pointer
+        if register_name == "sp":
+            return set()
+
+        producer = consumer.reg_state[register_name].src
+        # if this is a virtual input instruction this is an actual input
+        # otherwise this is computed from other inputs
+        if isinstance(producer.inst, VirtualInputInstruction):
+            return set(producer.inst.args_out)
+        else:
+            # go through all predecessors and recursively call this function
+            # Note that we only care about inputs (i.e., produced by a VirtualInputInstruction)
+            regs = []
+            if hasattr(producer.inst, "args_in"):
+                regs += producer.inst.args_in
+            if hasattr(producer.inst, "args_in_out"):
+                regs += producer.inst.args_in_out
+            predecessors = set()
+            for reg in regs:
+                predecessors = predecessors.union(self.find_all_predecessors_input_registers(producer, reg))
+            return set(predecessors)
 
     def ssa(self, filter_func=None):
         """Transform data flow graph into single static assignment (SSA) form."""
