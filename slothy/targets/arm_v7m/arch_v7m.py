@@ -2097,6 +2097,15 @@ def ldm_interval_splitting_cb():
 
         ldrs = []
         offset = 0
+
+        new_regs = []
+        for r in regs:
+            if r != ptr:
+                new_regs.append(r)
+        if ptr in regs:
+            new_regs.append(ptr)
+        regs = new_regs
+
         for r in regs:
             ldr = Armv7mInstruction.build(
                 ldr_with_imm, {"width": width, "Rd": r, "Ra": ptr, "imm": f"#{offset}"})
@@ -2108,7 +2117,8 @@ def ldm_interval_splitting_cb():
                 add_tags(inst.source_line.tags).\
                 add_comments(inst.source_line.comments)
             ldr.source_line = ldr_src
-
+        # ldrs = ldrs[1:] + ldrs[:1]
+        
         if log is not None:
             log(f"ldm splitting: {t.inst}; {[ldr for ldr in ldrs]}")
 
