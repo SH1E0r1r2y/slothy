@@ -52,6 +52,8 @@
 fe25519_add_opt_m7:
 
 slothy_start:
+ldr r9,[r8,#4]
+ldr r8,[r8,#0]
  ldr r0,[r8,#28]
  ldr r4,[r9,#28]
  adds r0,r0,r4
