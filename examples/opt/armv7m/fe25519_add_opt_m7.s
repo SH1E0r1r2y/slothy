@@ -78,9 +78,9 @@ ldr r4,[r9],#16
 ldr r4,[r9,#0]
 ldr r5,[r9,#4]
 ldr r6,[r9,#8]
-ldr r9,[r8,#0]
-ldr r10,[r8,#4]
-ldr r8,[r8,#8]
+ldr r9,[r8,#4]
+ldr r10,[r8,#8]
+ldr r8,[r8,#0]
  umaal r4,r11,r12,r8
  umaal r5,r11,r12,r9
  umaal r6,r11,r12,r10

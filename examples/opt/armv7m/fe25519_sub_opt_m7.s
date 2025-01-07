@@ -54,9 +54,9 @@ ldr r8,[r9],#16
  sbcs r2,r11
  sbcs r3,r12
 ldr r8,[r9,#0]
-ldr r10,[r9,#4]
-ldr r11,[r9,#8]
-ldr r9,[r9,#12]
+ldr r10,[r9,#8]
+ldr r11,[r9,#12]
+ldr r9,[r9,#4]
  sbcs r4,r8
  sbcs r5,r9
  sbcs r6,r10

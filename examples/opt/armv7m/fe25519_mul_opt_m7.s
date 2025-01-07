@@ -59,10 +59,10 @@ fe25519_mul_opt_m7:
  sub sp,#28
 
 slothy_start:
-ldr r3,[r2,#0]
-ldr r4,[r2,#4]
-ldr r5,[r2,#8]
-ldr r2,[r2,#12]
+ldr r3,[r2,#4]
+ldr r4,[r2,#8]
+ldr r5,[r2,#12]
+ldr r2,[r2,#0]
 ldr r14,[r1,#8]
 ldr r10,[r1,#4]
 ldr r0,[r1],#12
@@ -112,10 +112,10 @@ ldr r0,[r1],#12
  push {r0}// @slothy:writes=['stack0']
  ldr r2,[sp,#40]
  adds r2,r2,#16
-ldr r3,[r2,#0]
-ldr r4,[r2,#4]
-ldr r5,[r2,#8]
-ldr r2,[r2,#12]
+ldr r3,[r2,#4]
+ldr r4,[r2,#8]
+ldr r5,[r2,#12]
+ldr r2,[r2,#0]
  ldr r8,[r1],#4
  mov r0,#0
  umaal r11,r0,r2,r8
