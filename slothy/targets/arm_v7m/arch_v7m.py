@@ -1940,6 +1940,16 @@ def ldm_interval_splitting_cb():
                 add_comments(inst.source_line.comments)
             ldr.source_line = ldr_src
 
+        ldrs_reordered = []
+        for ldr, reg in zip(ldrs, regs):
+            if reg != ptr:
+                ldrs_reordered.append(ldr)
+
+        for ldr, reg in zip(ldrs, regs):
+            if reg == ptr:
+                ldrs_reordered.append(ldr)
+        ldrs = ldrs_reordered
+
         if log is not None:
             log(f"ldm splitting: {t.inst}; {[ldr for ldr in ldrs]}")
 
@@ -2127,6 +2137,18 @@ def ldrd_imm_splitting_cb():
                 add_tags(inst.source_line.tags).\
                 add_comments(inst.source_line.comments)
             ldr.source_line = ldr_src
+
+        ldrs_reordered = []
+        for ldr, reg in zip(ldrs, regs):
+            if reg != ptr:
+                ldrs_reordered.append(ldr)
+                #log(f"inst.args_out == ptr: {reg}")
+
+        for ldr, reg in zip(ldrs, regs):
+            if reg == ptr:
+                ldrs_reordered.append(ldr)
+                #log(f"inst.args_out == ptr: {reg}")
+        ldrs = ldrs_reordered
 
         if log is not None:
             log(f"ldrd splitting: {t.inst}; {[ldr for ldr in ldrs]}")
