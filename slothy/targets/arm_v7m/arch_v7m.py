@@ -1940,6 +1940,9 @@ def ldm_interval_splitting_cb():
                 add_comments(inst.source_line.comments)
             ldr.source_line = ldr_src
 
+        # In case the address register is also contained in the
+        # register list, we need to overwrite the address register
+        # in the last ldr
         ldrs_reordered = []
         for ldr, reg in zip(ldrs, regs):
             if reg != ptr:
@@ -2138,16 +2141,17 @@ def ldrd_imm_splitting_cb():
                 add_comments(inst.source_line.comments)
             ldr.source_line = ldr_src
 
+        # In case the address register is also contained in the
+        # register list, we need to overwrite the address register
+        # in the last ldr
         ldrs_reordered = []
         for ldr, reg in zip(ldrs, regs):
             if reg != ptr:
                 ldrs_reordered.append(ldr)
-                #log(f"inst.args_out == ptr: {reg}")
 
         for ldr, reg in zip(ldrs, regs):
             if reg == ptr:
                 ldrs_reordered.append(ldr)
-                #log(f"inst.args_out == ptr: {reg}")
         ldrs = ldrs_reordered
 
         if log is not None:
