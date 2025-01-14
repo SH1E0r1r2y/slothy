@@ -1576,7 +1576,7 @@ class ldr(Armv7mLoadInstruction): # pylint: disable=missing-docstring,invalid-na
         obj.increment = None
         obj.pre_index = 0
         obj.addr = obj.args_in[0]
-        obj.args_in_out_different = [(0,0)] # Can't have Rd==Ra
+        # obj.args_in_out_different = [(0,0)] # Can't have Rd==Ra
         return obj
 
     def write(self):

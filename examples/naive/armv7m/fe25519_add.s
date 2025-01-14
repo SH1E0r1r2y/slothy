@@ -72,7 +72,7 @@ slothy_start:
 	umaal r2, r11, r12, r6
 	umaal r3, r11, r12, r10
 	ldm r9, {r4-r6}
-	ldm r8, {r8-r10}
+	//ldm r8, {r8-r10}
 	umaal r4, r11, r12, r8
 	umaal r5, r11, r12, r9
 	umaal r6, r11, r12, r10

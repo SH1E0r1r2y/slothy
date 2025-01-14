@@ -716,7 +716,7 @@ class Fe25519_add(Example):
         #     slothy.rename_function(
         #         "fe25519_add_wrap", f"fe25519_add_opt_m7_wrap"
         #     )
-        #slothy.optimize(start="slothy_start", end="slothy_end")
+        slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Fe25519_sub(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
@@ -743,7 +743,7 @@ class Fe25519_sub(Example):
         #     slothy.rename_function(
         #         "fe25519_sub_wrap", f"fe25519_sub_opt_m7_wrap"
         #     )
-        # slothy.optimize(start="slothy_start", end="slothy_end")
+        slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Fe25519_mul(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
@@ -766,7 +766,7 @@ class Fe25519_mul(Example):
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
         # slothy.rename_function("fe25519_mul_wrap", "fe25519_mul_opt_m7_wrap")
         slothy.fusion_region("slothy_start", "slothy_end", ssa=False)
-        #slothy.optimize(start="slothy_start", end="slothy_end")
+        slothy.optimize(start="slothy_start", end="slothy_end")
         
 
 class Fe25519_sqr(Example):
@@ -792,7 +792,7 @@ class Fe25519_sqr(Example):
         slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
         slothy.fusion_region("slothy_start", "slothy_end", ssa=False)
-        #slothy.optimize(start="slothy_start", end="slothy_end")
+        slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Armv7mLoopSubs(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
