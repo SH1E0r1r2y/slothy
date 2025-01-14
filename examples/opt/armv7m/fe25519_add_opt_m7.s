@@ -142,7 +142,7 @@ fe25519_add_opt_m7:
  .align 2
  .type fe25519_add_opt_m7_wrap, %function
  .global fe25519_add_opt_m7_wrap
-fe25519_add_wrap:
+fe25519_add_opt_m7_wrap:
     push {r4-r11, lr}
     push {r0}
 
