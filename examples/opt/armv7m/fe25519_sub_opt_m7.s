@@ -44,8 +44,8 @@ fe25519_sub_opt_m7:
                                 // Cycle bound:     26.0
                                 // IPC bound:       1.42
                                 //
-                                // Wall time:     0.24s
-                                // User time:     0.24s
+                                // Wall time:     0.23s
+                                // User time:     0.23s
                                 //
                                 // ----- cycle (expected) ------>
                                 // 0                        25
