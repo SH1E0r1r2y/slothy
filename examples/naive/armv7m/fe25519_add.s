@@ -40,47 +40,73 @@
 // assuming no wait states), and no conditional branches or memory access
 // pattern dep on secret data.
 
-	.text
-	.align 2
+// 	.text
+// 	.align 2
 
-// input: *r8=a, *r9=b
-// output: r0-r7
-// clobbers all other registers
-// cycles: 45
-	.type fe25519_add, %function
-	.global fe25519_add
-fe25519_add:
+; // input: *r8=a, *r9=b
+; // output: r0-r7
+; // clobbers all other registers
+; // cycles: 45
+; 	.type fe25519_add, %function
+; 	.global fe25519_add
+; fe25519_add:
 
-slothy_start:
+; slothy_start:
 
-	ldr r0,[r8,#28]
-	ldr r4,[r9,#28]
-	adds r0,r0,r4
-	mov r11,#0
-	adc r11,r11,r11
-	lsl r11, r11, #1
-	add r11, r11, r0, lsr #31
-	movs r7, #19
-	mul r11, r11, r7
-	bic r7, r0, #0x80000000
+; 	ldr r0,[r8,#28]
+; 	ldr r4,[r9,#28]
+; 	adds r0,r0,r4
+; 	mov r11,#0
+; 	adc r11,r11,r11
+; 	lsl r11, r11, #1
+; 	add r11, r11, r0, lsr #31
+; 	movs r7, #19
+; 	mul r11, r11, r7
+; 	bic r7, r0, #0x80000000
 	
-	ldm r8!, {r0-r3}
-	ldm r9!,{r4-r6,r10} 
-	mov r12, #1
-	umaal r0, r11, r12, r4
-	umaal r1, r11, r12, r5
-	umaal r2, r11, r12, r6
-	umaal r3, r11, r12, r10
-	ldm r9, {r4-r6}
-	//ldm r8, {r8-r10}
-	umaal r4, r11, r12, r8
-	umaal r5, r11, r12, r9
-	umaal r6, r11, r12, r10
-	add r7, r7, r11
-slothy_end:
-	bx lr
+; 	ldm r8!, {r0-r3}
+; 	ldm r9!,{r4-r6,r10} 
+; 	mov r12, #1
+; 	umaal r0, r11, r12, r4
+; 	umaal r1, r11, r12, r5
+; 	umaal r2, r11, r12, r6
+; 	umaal r3, r11, r12, r10
+; 	ldm r9, {r4-r6}
+; 	//ldm r8, {r8-r10}
+; 	umaal r4, r11, r12, r8
+; 	umaal r5, r11, r12, r9
+; 	umaal r6, r11, r12, r10
+; 	add r7, r7, r11
+; slothy_end:
+; 	bx lr
 
+.thumb
+.syntax unified
 
+.macro fe25519_add out, a, b
+ 	ldr r0,[\a,#28]
+ 	ldr r4,[\b,#28]
+ 	adds r0,r0,r4
+ 	mov r11,#0
+ 	adc r11,r11,r11
+ 	lsl r11, r11, #1
+ 	add r11, r11, r0, lsr #31
+ 	movs r7, #19
+ 	mul r11, r11, r7
+ 	bic r7, r0, #0x80000000
+ 	ldm \a!, {r0-r3}
+ 	ldm \b!,{r4-r6,r10} 
+ 	mov r12, #1
+ 	umaal r0, r11, r12, r4
+ 	umaal r1, r11, r12, r5
+ 	umaal r2, r11, r12, r6
+ 	umaal r3, r11, r12, r10
+ 	ldm \b, {r4-r6}
+ 	umaal r4, r11, r12, r8
+ 	umaal r5, r11, r12, r9
+ 	umaal r6, r11, r12, r10
+ 	add r7, r7, r11
+.endm
 
 // void fe25519_add_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
 // out = r0, a=r1, b=r2
@@ -90,11 +116,13 @@ slothy_end:
 fe25519_add_wrap:
     push {r4-r11, lr}
     push {r0}
-	
+slothy_start:
 	mov r8, r1
 	mov r9, r2
 
-	bl fe25519_add
+	//bl fe25519_add
+	fe25519_add out, a, b
+
 	pop {r8}
 
 	str r0, [r8, #0]
@@ -105,6 +133,7 @@ fe25519_add_wrap:
 	str r5, [r8, #20]
 	str r6, [r8, #24]
 	str r7, [r8, #28]
-	
+slothy_end:	
     pop {r4-r11, lr}
 	bx lr
+

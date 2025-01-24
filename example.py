@@ -794,6 +794,28 @@ class Fe25519_sqr(Example):
         slothy.fusion_region("slothy_start", "slothy_end", ssa=False)
         slothy.optimize(start="slothy_start", end="slothy_end")
 
+class Curve25519_scalarmult(Example):
+    def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
+        name = "curve25519_scalarmult"
+        infile = name
+
+        if var != "":
+            name += f"_{var}"
+            infile += f"_{var}"
+        name += f"_{target_label_dict[target]}"
+
+        super().__init__(infile, name, rename=True, arch=arch, target=target)
+
+    def core(self,slothy):
+        r = slothy.config.reserved_regs
+        r.add("r14")
+        slothy.config.reserved_regs = r
+        slothy.config.variable_size=True
+        slothy.config.inputs_are_outputs = True
+        slothy.config.constraints.functional_only = False
+        slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        slothy.optimize(start="slothy_start", end="slothy_end")
+
 class Armv7mLoopSubs(Example):
     def __init__(self, var="", arch=Arch_Armv7M, target=Target_CortexM7):
         name = "loop_subs"
@@ -1897,6 +1919,7 @@ def main():
                  Fe25519_sub(),
                  Fe25519_mul(),
                  Fe25519_sqr(),
+                 Curve25519_scalarmult(),
                  Armv7mExample0Func(),
 
                 # Loop examples
