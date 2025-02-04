@@ -45,15 +45,9 @@
 // input/result in (r0-r7)
 // clobbers all other registers
 // cycles: 115
-	.type fe25519_sqr, %function
-fe25519_sqr:
-	.global fe25519_sqr
-	push {lr}
 
-	//frame push {lr}
-	sub sp,#20 
-	//frame address sp,24
-slothy_start:	
+	
+.macro fe25519_sqr 
 	//mul 01, 00
 	umull r9,r10,r0,r0
 	umull r11,r12,r0,r1
@@ -246,10 +240,7 @@ slothy_start:
 	mov r12,#38
 	umaal r6,lr,r12,r8
 	add r7,r7,lr
-slothy_end:	
-	pop {pc}
-	
-
+.endm
 
 // void fe25519_sqr_wrap(uint32_t *out)
 	.align 2
@@ -257,6 +248,7 @@ slothy_end:
 	.global fe25519_sqr_wrap
 fe25519_sqr_wrap:
     push {r4-r11, lr}
+slothy_start:
     push {r0}
 	
 	ldr r1, [r0, #4] 
@@ -268,8 +260,7 @@ fe25519_sqr_wrap:
 	ldr r7, [r0, #28]
 	ldr r0, [r0] 
 
-	bl fe25519_sqr
-	pop {r8}
+	fe25519_sqr
 
 	str r0, [r8, #0]
 	str r1, [r8, #4]
@@ -279,6 +270,6 @@ fe25519_sqr_wrap:
 	str r5, [r8, #20]
 	str r6, [r8, #24]
 	str r7, [r8, #28]
-	
+slothy_end:
     pop {r4-r11, lr}
 	bx lr

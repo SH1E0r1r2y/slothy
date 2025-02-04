@@ -47,43 +47,11 @@
 ; // output: r0-r7
 ; // clobbers all other registers
 ; // cycles: 45
-; 	.type fe25519_add, %function
-; 	.global fe25519_add
-; fe25519_add:
-
-; slothy_start:
-
-; 	ldr r0,[r8,#28]
-; 	ldr r4,[r9,#28]
-; 	adds r0,r0,r4
-; 	mov r11,#0
-; 	adc r11,r11,r11
-; 	lsl r11, r11, #1
-; 	add r11, r11, r0, lsr #31
-; 	movs r7, #19
-; 	mul r11, r11, r7
-; 	bic r7, r0, #0x80000000
-	
-; 	ldm r8!, {r0-r3}
-; 	ldm r9!,{r4-r6,r10} 
-; 	mov r12, #1
-; 	umaal r0, r11, r12, r4
-; 	umaal r1, r11, r12, r5
-; 	umaal r2, r11, r12, r6
-; 	umaal r3, r11, r12, r10
-; 	ldm r9, {r4-r6}
-; 	//ldm r8, {r8-r10}
-; 	umaal r4, r11, r12, r8
-; 	umaal r5, r11, r12, r9
-; 	umaal r6, r11, r12, r10
-; 	add r7, r7, r11
-; slothy_end:
-; 	bx lr
 
 .thumb
 .syntax unified
 
-.macro fe25519_add out, a, b
+.macro fe25519_add a, b
  	ldr r0,[\a,#28]
  	ldr r4,[\b,#28]
  	adds r0,r0,r4
@@ -115,13 +83,14 @@
 	.global fe25519_add_wrap
 fe25519_add_wrap:
     push {r4-r11, lr}
-    push {r0}
 slothy_start:
+    push {r0}
+
 	mov r8, r1
 	mov r9, r2
 
 	//bl fe25519_add
-	fe25519_add out, a, b
+	fe25519_add r8, r9
 
 	pop {r8}
 

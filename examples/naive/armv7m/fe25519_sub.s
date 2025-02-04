@@ -29,21 +29,65 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-	.text
-	.align 2
+; 	.text
+; 	.align 2
 
 
-fe25519_sub:
-	.type fe25519_sub, %function
-	.global fe25519_sub
-slothy_start:
-	ldm r8, {r0-r7}
-	ldm r9!,{r8,r10-r12}
+; fe25519_sub:
+; 	.type fe25519_sub, %function
+; 	.global fe25519_sub
+; slothy_start:
+; 	ldm r8, {r0-r7}
+; 	ldm r9!,{r8,r10-r12}
+; 	subs r0,r8
+; 	sbcs r1,r10
+; 	sbcs r2,r11
+; 	sbcs r3,r12
+; 	ldm r9,{r8-r11}
+; 	sbcs r4,r8
+; 	sbcs r5,r9
+; 	sbcs r6,r10
+; 	sbcs r7,r11
+
+; 	// if subtraction goes below 0, set r8 to -1 and r9 to -38, else set both to 0s
+; 	sbc r8,r8
+; 	and r9,r8,#-38
+
+; 	adds r0,r9
+; 	adcs r1,r8
+; 	adcs r2,r8
+; 	adcs r3,r8
+; 	adcs r4,r8
+; 	adcs r5,r8
+; 	adcs r6,r8
+; 	adcs r7,r8
+
+; 	// if the subtraction did not go below 0, we are done and (r8,r9) are set to 0
+; 	// if the subtraction went below 0 and the addition overflowed, we are done, so set (r8,r9) to 0
+; 	// if the subtraction went below 0 and the addition did not overflow, we need to add once more
+; 	// (r8,r9) will be correctly set to (-1,-38) only when r8 was -1 and we don't have a carry,
+; 	// note that the carry will always be 0 in case (r8,r9) was (0,0) since then there was no real addition
+; 	// also note that it is extremely unlikely we will need an extra addition:
+; 	//   that can only happen if input1 was slightly >= 0 and input2 was > 2^256-38 (really input2-input1 > 2^256-38)
+; 	//   in that case we currently have 2^256-38 < (r0...r7) < 2^256, so adding -38 will only affect r0
+; 	adcs r8,#0
+; 	and r9,r8,#-38
+
+; 	adds r0,r9
+; slothy_end:
+; 	bx lr
+
+.thumb
+.syntax unified
+
+.macro fe25519_sub a,b
+	ldm \a, {r0-r7}
+	ldm \b!,{r8,r10-r12}
 	subs r0,r8
 	sbcs r1,r10
 	sbcs r2,r11
 	sbcs r3,r12
-	ldm r9,{r8-r11}
+	ldm \b,{r8-r11}
 	sbcs r4,r8
 	sbcs r5,r9
 	sbcs r6,r10
@@ -74,10 +118,7 @@ slothy_start:
 	and r9,r8,#-38
 
 	adds r0,r9
-slothy_end:
-	bx lr
-
-
+.endm
 
 // void fe25519_sub_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
 // out = r0, a=r1, b=r2
@@ -86,12 +127,13 @@ slothy_end:
 	.global fe25519_sub_wrap
 fe25519_sub_wrap:
     push {r4-r11, lr}
+slothy_start:
     push {r0}
-	
+
 	mov r8, r1
 	mov r9, r2
 
-	bl fe25519_sub
+	fe25519_sub r8, r9
 	pop {r8}
 
 	str r0, [r8, #0]
@@ -102,6 +144,6 @@ fe25519_sub_wrap:
 	str r5, [r8, #20]
 	str r6, [r8, #24]
 	str r7, [r8, #28]
-	
+slothy_end:
     pop {r4-r11, lr}
 	bx lr
