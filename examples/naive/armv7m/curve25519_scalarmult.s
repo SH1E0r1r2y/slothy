@@ -49,11 +49,20 @@ curve25519_scalarmult:
 	//               0  32 64 96 128 160    164     168    200        204
 
 	push {r0,r4-r11,lr}
+slothy_start:
 	//frame push {r4-r11,lr}
 	//frame address sp,40
 	
 	mov r10,r2
-	bl loadm
+	//bl loadm
+	ldr r0,[r1,#0]
+	ldr r2,[r1,#8]
+	ldr r3,[r1,#12]
+	ldr r4,[r1,#16]
+	ldr r5,[r1,#20]
+	ldr r6,[r1,#24]
+	ldr r7,[r1,#28]
+	ldr r1,[r1,#4]
 	
 	and r0,r0,#0xfffffff8
 	//and r7,r7,#0x7fffffff not needed since we don't inspect the msb anyway
@@ -66,7 +75,15 @@ curve25519_scalarmult:
 	
 	//ldm r1,{r0-r7}
 	mov r1,r10
-	bl loadm
+	//bl loadm
+	ldr r0,[r1,#0]
+	ldr r2,[r1,#8]
+	ldr r3,[r1,#12]
+	ldr r4,[r1,#16]
+	ldr r5,[r1,#20]
+	ldr r6,[r1,#24]
+	ldr r7,[r1,#28]
+	ldr r1,[r1,#4]
 	
 	and r7,r7,#0x7fffffff
 	push {r0-r7}
@@ -146,33 +163,33 @@ curve25519_scalarmult:
 	
 	mov r8,sp
 	add r9,sp,#32
-	bl fe25519_add
+	fe25519_add r8, r9
 	push {r0-r7}
 	//frame address sp,272
 	
-	bl fe25519_sqr
+	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,304
 	
 	add r8,sp,#64
 	add r9,sp,#96
-	bl fe25519_sub
+	fe25519_sub r8, r9
 	push {r0-r7}
 	//frame address sp,336
 	
-	bl fe25519_sqr
+	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,368
 	
 	mov r1,sp
 	add r2,sp,#64
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#128
 	stm r8,{r0-r7}
 	
 	add r8,sp,#64
 	mov r9,sp
-	bl fe25519_sub
+	fe25519_sub r8, r9
 	add r8,sp,#64
 	stm r8,{r0-r7}
 	
@@ -212,50 +229,50 @@ curve25519_scalarmult:
 	
 	mov r1,sp
 	add r2,sp,#64
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#160
 	stm r8,{r0-r7}
 	
 	add r8,sp,#192
 	add r9,sp,#224
-	bl fe25519_add
+	fe25519_add r8, r9
 	stm sp,{r0-r7}
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
 	add r8,sp,#192
 	add r9,sp,#224
-	bl fe25519_sub
+	fe25519_sub r8, r9
 	stm sp,{r0-r7}
 	
 	mov r1,sp
 	add r2,sp,#96
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	
 	mov r8,sp
 	add r9,sp,#32
-	bl fe25519_add
+	fe25519_add r8, r9
 	
-	bl fe25519_sqr
+	fe25519_sqr
 	
 	add r8,sp,#192
 	stm r8,{r0-r7}
 	
 	mov r8,sp
 	add r9,sp,#32
-	bl fe25519_sub
+	fe25519_sub r8, r9
 	
-	bl fe25519_sqr
+	fe25519_sqr
 	stm sp,{r0-r7}
 	
 	mov r1,sp
 	add r2,sp,#256
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#224
 	stm r8,{r0-r7}
 	
@@ -313,31 +330,31 @@ curve25519_scalarmult:
 	push {r0-r7}
 	//frame address sp,272
 	
-	bl fe25519_sqr
-	bl fe25519_sqr
+	fe25519_sqr
+	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,304
 	
 	add r1,sp,#96
 	mov r2,sp
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
 	// current stack: z^(2^9) z^(2^11) x z
 	
-	bl fe25519_sqr
+	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,336
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
@@ -349,7 +366,7 @@ curve25519_scalarmult:
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
@@ -361,7 +378,7 @@ curve25519_scalarmult:
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	//z^(2^20 - 2^0)
 	
@@ -370,35 +387,80 @@ curve25519_scalarmult:
 	movs r8,#20
 	sub sp,sp,#32
 	//frame address sp,368
-	bl fe25519_sqr_many // 2479 cycles
+	//bl fe25519_sqr_many // 2479 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}
 	//z^(2^40 - 2^20)
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add sp,sp,#32
 	//frame address sp,336
 	//z^(2^40 - 2^0)
 	
 	movs r8,#10
-	bl fe25519_sqr_many // 1249 cycles
+	//bl fe25519_sqr_many // 1249 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}
 	//z^(2^50 - 2^10)
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
 	// current stack: _ z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#50
-	bl fe25519_sqr_many // 6169 cycles
+	//bl fe25519_sqr_many // 6169 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}
 	//z^(2^100 - 2^50)
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	
 	// 13751 cycles so far for inversion
@@ -408,12 +470,27 @@ curve25519_scalarmult:
 	movs r8,#100
 	sub sp,sp,#32
 	//frame address sp,368
-	bl fe25519_sqr_many // 12319 cycles
+	//bl fe25519_sqr_many // 12319 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}	
 	//z^(2^200 - 2^100)
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	add sp,sp,#32
 	//frame address sp,336
 	//z^(2^200 - 2^0)
@@ -421,21 +498,51 @@ curve25519_scalarmult:
 	// current stack: _ z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#50
-	bl fe25519_sqr_many // 6169 cycles
+	//bl fe25519_sqr_many // 6169 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}
 	//z^(2^250 - 2^50)
 	
 	mov r1,sp
 	add r2,sp,#32
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	//z^(2^250 - 2^0)
 	
 	movs r8,#5
-	bl fe25519_sqr_many // 634 cycles
+	//bl fe25519_sqr_many // 634 cycles
+	push {r8,lr}
+	//frame push {r8,lr}
+loop_start:
+	fe25519_sqr
+	
+	ldr r8,[sp,#0]
+	subs r8,r8,#1
+	str r8,[sp,#0]
+	bne loop_start
+	
+	add sp,sp,#4
+	//frame address sp,4
+	add r8,sp,#4
+	stm r8,{r0-r7}
+	pop {pc}	
 	//z^(2^255 - 2^5)
 	
 	mov r1,sp
 	add r2,sp,#64
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	//z^(2^255 - 21)
 	
@@ -446,7 +553,7 @@ curve25519_scalarmult:
 	
 	mov r1,sp
 	add r2,sp,#96
-	bl fe25519_mul
+	fe25519_mul r8, r9
 	
 	// now final reduce
 	lsr r8,r7,#31
@@ -496,7 +603,7 @@ curve25519_scalarmult:
 	
 	add sp,sp,#300
 	//frame address sp,36
-	
+slothy_end:	
 	pop {r4-r11,pc}
 	
 	// 234 cycles after inversion
