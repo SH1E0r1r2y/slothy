@@ -77,7 +77,7 @@
  .align 2
  .type fe25519_sub_opt_m7_wrap, %function
  .global fe25519_sub_opt_m7_wrap
-fe25519_sub_wrap:
+fe25519_sub_opt_m7_wrap:
     push {r4-r11, lr}
         slothy_start:
                                 // Instructions:    49
