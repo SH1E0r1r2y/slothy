@@ -48,6 +48,7 @@
 
 	
 .macro fe25519_sqr 
+	sub sp,#20 
 	//mul 01, 00
 	umull r9,r10,r0,r0
 	umull r11,r12,r0,r1
@@ -261,7 +262,8 @@ slothy_start:
 	ldr r0, [r0] 
 
 	fe25519_sqr
-
+	pop {r8}
+	
 	str r0, [r8, #0]
 	str r1, [r8, #4]
 	str r2, [r8, #8]

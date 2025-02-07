@@ -58,11 +58,15 @@ fe25519_mul:
 
 	sub sp,#28
 
-slothy_start:
-	//frame address sp,36
-	ldm r2,{r2,r3,r4,r5}
 
-	ldm r1!,{r0,r10,lr}
+
+.macro fe25519_mul_a inputRa,inputRb
+	push {r2}
+	sub sp,#28
+	//frame address sp,36
+	ldm \inputRa,{r2,r3,r4,r5}
+
+	ldm \inputRb!,{r0,r10,lr}
 	umull r6,r11,r2,r0
 
 	umull r7,r12,r3,r0
@@ -227,23 +231,9 @@ slothy_start:
 	umaal r6,r8,r9,r7
 	add r7,r8,r12
 
-slothy_end:
 	add sp,#12
 	//frame address sp,4
 
-	pop {pc}
-
-.macro fe25519_mul_a out1, out2, out3, a, b
-	ldm \a,{r2,r3,r4,r5}
-
-	ldm \b!,{r0,r10,lr}
-	umull r6,r11,r2,r0
-	umull r7,r12,r3,r0
-	umaal r7,r11,r2,r10
-    mov \out1, r6
-    //mov \temp2, r7
-	//push {r6,r7}  //@slothy:writes=[stack1,stack2]
-	//frame address sp,44
 .endm	
 
 // void fe25519_mul_wrap(uint32_t *out, uint32_t *a, uint32_t *b)
@@ -254,12 +244,13 @@ slothy_end:
 fe25519_mul_wrap:
     push {r4-r11, lr}
     push {r0}
-
 	mov r8, r1
 	mov r9, r2
 
 	//bl fe25519_mul
-	fe25519_mul_a r6, r8, r9
+slothy_start:
+	fe25519_mul_a r8, r9
+slothy_end:
 	pop {r8}
 
 	str r0, [r8, #0]
