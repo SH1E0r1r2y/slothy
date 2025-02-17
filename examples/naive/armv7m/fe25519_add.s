@@ -62,14 +62,15 @@
  	movs r7, #19
  	mul r11, r11, r7
  	bic r7, r0, #0x80000000
- 	ldm \a!, {r0-r3}
+ 	ldm \a!,{r0-r3}
  	ldm \b!,{r4-r6,r10} 
  	mov r12, #1
  	umaal r0, r11, r12, r4
  	umaal r1, r11, r12, r5
  	umaal r2, r11, r12, r6
  	umaal r3, r11, r12, r10
- 	ldm \b, {r4-r6}
+ 	ldm \b,{r4-r6}
+	ldm \a,{r8-r10}
  	umaal r4, r11, r12, r8
  	umaal r5, r11, r12, r9
  	umaal r6, r11, r12, r10

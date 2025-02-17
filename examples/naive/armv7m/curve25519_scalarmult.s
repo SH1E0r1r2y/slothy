@@ -38,17 +38,457 @@
 // assuming no wait states), and no conditional branches or memory access
 // pattern dep on secret data.
 
+.thumb
+.syntax unified
+
+.macro fe25519_add inputRa, inputRb
+ 	ldr r0,[\inputRa,#28]
+ 	ldr r4,[\inputRb,#28]
+ 	adds r0,r0,r4
+ 	mov r11,#0
+ 	adc r11,r11,r11
+ 	lsl r11, r11, #1
+ 	add r11, r11, r0, lsr #31
+ 	movs r7, #19
+ 	mul r11, r11, r7
+ 	bic r7, r0, #0x80000000
+ 	ldm \inputRa!, {r0-r3}
+ 	ldm \inputRb!,{r4-r6,r10} 
+ 	mov r12, #1
+ 	umaal r0, r11, r12, r4
+ 	umaal r1, r11, r12, r5
+ 	umaal r2, r11, r12, r6
+ 	umaal r3, r11, r12, r10
+ 	ldm \inputRb, {r4-r6}
+ 	umaal r4, r11, r12, r8
+ 	umaal r5, r11, r12, r9
+ 	umaal r6, r11, r12, r10
+ 	add r7, r7, r11
+.endm
+
+.macro fe25519_sub inputRa,inputRb
+	ldm \inputRa, {r0-r7}
+	ldm \inputRb!,{r8,r10-r12}
+	subs r0,r8
+	sbcs r1,r10
+	sbcs r2,r11
+	sbcs r3,r12
+	ldm \inputRb,{r8-r11}
+	sbcs r4,r8
+	sbcs r5,r9
+	sbcs r6,r10
+	sbcs r7,r11
+
+	// if subtraction goes below 0, set r8 to -1 and r9 to -38, else set both to 0s
+	sbc r8,r8
+	and r9,r8,#-38
+
+	adds r0,r9
+	adcs r1,r8
+	adcs r2,r8
+	adcs r3,r8
+	adcs r4,r8
+	adcs r5,r8
+	adcs r6,r8
+	adcs r7,r8
+
+	// if the subtraction did not go below 0, we are done and (r8,r9) are set to 0
+	// if the subtraction went below 0 and the addition overflowed, we are done, so set (r8,r9) to 0
+	// if the subtraction went below 0 and the addition did not overflow, we need to add once more
+	// (r8,r9) will be correctly set to (-1,-38) only when r8 was -1 and we don't have a carry,
+	// note that the carry will always be 0 in case (r8,r9) was (0,0) since then there was no real addition
+	// also note that it is extremely unlikely we will need an extra addition:
+	//   that can only happen if input1 was slightly >= 0 and input2 was > 2^256-38 (really input2-input1 > 2^256-38)
+	//   in that case we currently have 2^256-38 < (r0...r7) < 2^256, so adding -38 will only affect r0
+	adcs r8,#0
+	and r9,r8,#-38
+
+	adds r0,r9
+.endm
+
+.macro fe25519_mul inputRa,inputRb
+	push {r2}
+	sub sp,#28
+	//frame address sp,36
+	ldm \inputRa,{r2,r3,r4,r5}
+
+	ldm \inputRb!,{r0,r10,lr}
+	umull r6,r11,r2,r0
+
+	umull r7,r12,r3,r0
+	umaal r7,r11,r2,r10
+
+	push {r6,r7}  //@slothy:writes=[stack1,stack2]
+	//frame address sp,44
+
+	umull r8,r6,r4,r0
+	umaal r8,r11,r3,r10
+
+	umull r9,r7,r5,r0
+	umaal r9,r11,r4,r10
+
+	umaal r11,r7,r5,r10
+
+	umaal r8,r12,r2,lr
+	umaal r9,r12,r3,lr
+	umaal r11,r12,r4,lr
+	umaal r12,r7,r5,lr
+
+	ldm r1!,{r0,r10,lr}
+
+	umaal r9,r6,r2,r0
+	umaal r11,r6,r3,r0
+	umaal r12,r6,r4,r0
+	umaal r6,r7,r5,r0
+
+	strd r8,r9,[sp,#8]  //@slothy:writes=[stack3,stack4]
+
+	mov r9,#0
+	umaal r11,r9,r2,r10
+	umaal r12,r9,r3,r10
+	umaal r6,r9,r4,r10
+	umaal r7,r9,r5,r10
+
+	mov r10,#0
+	umaal r12,r10,r2,lr
+	umaal r6,r10,r3,lr
+	umaal r7,r10,r4,lr
+	umaal r9,r10,r5,lr
+
+	ldr r8,[r1],#4
+	mov lr,#0
+	umaal lr,r6,r2,r8
+	umaal r7,r6,r3,r8
+	umaal r9,r6,r4,r8
+	umaal r10,r6,r5,r8
+
+	//_ _ _ _ _ 6 10 9| 7 | lr 12 11 _ _ _ _
+
+	ldr r8,[r1],#-28
+	mov r0,#0
+	umaal r7,r0,r2,r8
+	umaal r9,r0,r3,r8
+	umaal r10,r0,r4,r8
+	umaal r6,r0,r5,r8
+
+	push {r0}  //@slothy:writes=[stack0]
+	//frame address sp,48
+
+	//_ _ _ _ s 6 10 9| 7 | lr 12 11 _ _ _ _
+
+	ldr r2,[sp,#40]
+	adds r2,r2,#16
+	ldm r2,{r2,r3,r4,r5}
+
+	ldr r8,[r1],#4
+	mov r0,#0
+	umaal r11,r0,r2,r8
+	str r11,[sp,#16+4]  //@slothy:writes=[stack5]
+	umaal r12,r0,r3,r8
+	umaal lr,r0,r4,r8
+	umaal r0,r7,r5,r8 // 7=carry for 9
+
+	//_ _ _ _ s 6 10 9+7| 0 | lr 12 _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov r11,#0
+	umaal r12,r11,r2,r8
+	str r12,[sp,#20+4]  //@slothy:writes=[stack6]
+	umaal lr,r11,r3,r8
+	umaal r0,r11,r4,r8
+	umaal r11,r7,r5,r8 // 7=carry for 10
+
+	//_ _ _ _ s 6 10+7 9+11| 0 | lr _ _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov r12,#0
+	umaal lr,r12,r2,r8
+	str lr,[sp,#24+4]  //@slothy:writes=[stack7]
+	umaal r0,r12,r3,r8
+	umaal r11,r12,r4,r8
+	umaal r10,r12,r5,r8 // 12=carry for 6
+
+	//_ _ _ _ s 6+12 10+7 9+11| 0 | _ _ _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov lr,#0
+	umaal r0,lr,r2,r8
+	str r0,[sp,#28+4]  //@slothy:writes=[stack8]
+	umaal r11,lr,r3,r8
+	umaal r10,lr,r4,r8
+	umaal r6,lr,r5,r8 // lr=carry for saved
+
+	//_ _ _ _ s+lr 6+12 10+7 9+11| _ | _ _ _ _ _ _ _
+
+	ldm r1!,{r0,r8}
+	umaal r11,r9,r2,r0
+	str r11,[sp,#32+4]  //@slothy:writes=[stack9]
+	umaal r9,r10,r3,r0
+	umaal r10,r6,r4,r0
+	pop {r11}  //@slothy:reads=[stack0]
+	//frame address sp,44
+	umaal r11,r6,r5,r0 // 6=carry for next
+
+	//_ _ _ 6 11+lr 10+12 9+7 _ | _ | _ _ _ _ _ _ _
+
+	umaal r9,r7,r2,r8
+	umaal r10,r7,r3,r8
+	umaal r11,r7,r4,r8
+	umaal r6,r7,r5,r8
+
+	ldm r1!,{r0,r8}
+	umaal r10,r12,r2,r0
+	umaal r11,r12,r3,r0
+	umaal r6,r12,r4,r0
+	umaal r7,r12,r5,r0
+
+	umaal r11,lr,r2,r8
+	umaal r6,lr,r3,r8
+	umaal lr,r7,r4,r8
+	umaal r7,r12,r5,r8
+
+	// 12 7 lr 6 11 10 9 stack*9
+
+	//now reduce
+
+	ldrd r4,r5,[sp,#28] // @slothy:reads=[stack8,stack9]
+	movs r3,#38
+	mov r8,#0
+	umaal r4,r8,r3,r12
+	lsl r8,r8,#1
+	orr r8,r8,r4, lsr #31
+	and r12,r4,#0x7fffffff
+	movs r4,#19
+	mul r8,r8,r4
+
+	pop {r0-r2} //@slothy:reads=[stack1,stack2,stack3]
+	//frame address sp,32
+	umaal r0,r8,r3,r5
+	umaal r1,r8,r3,r9
+	umaal r2,r8,r3,r10
+	mov r9,#38
+	pop {r3,r4}   //@slothy:reads=[stack4,stack5]
+	//frame address sp,24
+	umaal r3,r8,r9,r11
+	umaal r4,r8,r9,r6
+	pop {r5,r6}  //@slothy:reads=[stack6,stack7]
+	//frame address sp,16
+	umaal r5,r8,r9,lr
+	umaal r6,r8,r9,r7
+	add r7,r8,r12
+
+	add sp,#12
+	//frame address sp,4
+
+.endm	
+
+.macro fe25519_sqr 
+	sub sp,#20 
+	//mul 01, 00
+	umull r9,r10,r0,r0
+	umull r11,r12,r0,r1
+	adds r11,r11,r11
+	mov lr,#0
+	umaal r10,r11,lr,lr
+	
+	//r9 r10 done
+	//r12 carry for 3rd before col
+	//r11+C carry for 3rd final col
+	
+	push {r9,r10} //@slothy:writes=[stack0,stack1]
+	//frame address sp,32
+	
+	//mul 02, 11
+	mov r8,#0
+	umaal r8,r12,r0,r2
+	adcs r8,r8,r8
+	umaal r8,r11,r1,r1
+	
+	//r8 done (3rd col)
+	//r12 carry for 4th before col
+	//r11+C carry for 4th final col
+	
+	//mul 03, 12
+	umull r9,r10,r0,r3
+	umaal r9,r12,r1,r2
+	adcs r9,r9,r9
+	umaal r9,r11,lr,lr
+	
+	//r9 done (4th col)
+	//r10+r12 carry for 5th before col
+	//r11+C carry for 5th final col
+	
+	strd r8,r9,[sp,#8] //@slothy:writes=[stack2,stack3]
+	
+	//mul 04, 13, 22
+	mov r9,#0
+	umaal r9,r10,r0,r4
+	umaal r9,r12,r1,r3
+	adcs r9,r9,r9
+	umaal r9,r11,r2,r2
+	
+	//r9 done (5th col)
+	//r10+r12 carry for 6th before col
+	//r11+C carry for 6th final col
+	
+	str r9,[sp,#16] //@slothy:writes=[stack4]
+	
+	//mul 05, 14, 23
+	umull r9,r8,r0,r5
+	umaal r9,r10,r1,r4
+	umaal r9,r12,r2,r3
+	adcs r9,r9,r9
+	umaal r9,r11,lr,lr
+	
+	//r9 done (6th col)
+	//r10+r12+r8 carry for 7th before col
+	//r11+C carry for 7th final col
+	
+	str r9,[sp,#20] //@slothy:writes=[stack5]
+	
+	//mul 06, 15, 24, 33
+	mov r9,#0
+	umaal r9,r8,r1,r5
+	umaal r9,r12,r2,r4
+	umaal r9,r10,r0,r6
+	adcs r9,r9,r9
+	umaal r9,r11,r3,r3
+	
+	//r9 done (7th col)
+	//r8+r10+r12 carry for 8th before col
+	//r11+C carry for 8th final col
+	
+	str r9,[sp,#24] //@slothy:writes=[stack6]
+	
+	//mul 07, 16, 25, 34
+	umull r0,r9,r0,r7
+	umaal r0,r10,r1,r6
+	umaal r0,r12,r2,r5
+	umaal r0,r8,r3,r4
+	adcs r0,r0,r0
+	umaal r0,r11,lr,lr
+	
+	//r0 done (8th col)
+	//r9+r8+r10+r12 carry for 9th before col
+	//r11+C carry for 9th final col
+	
+	//mul 17, 26, 35, 44
+	umaal r9,r8,r1,r7 //r1 is now dead
+	umaal r9,r10,r2,r6
+	umaal r12,r9,r3,r5
+	adcs r12,r12,r12
+	umaal r11,r12,r4,r4
+	
+	//r11 done (9th col)
+	//r8+r10+r9 carry for 10th before col
+	//r12+C carry for 10th final col
+	
+	//mul 27, 36, 45
+	umaal r9,r8,r2,r7 //r2 is now dead
+	umaal r10,r9,r3,r6
+	movs r2,#0
+	umaal r10,r2,r4,r5
+	adcs r10,r10,r10
+	umaal r12,r10,lr,lr
+	
+	//r12 done (10th col)
+	//r8+r9+r2 carry for 11th before col
+	//r10+C carry for 11th final col
+	
+	//mul 37, 46, 55
+	umaal r2,r8,r3,r7 //r3 is now dead
+	umaal r9,r2,r4,r6
+	adcs r9,r9,r9
+	umaal r10,r9,r5,r5
+	
+	//r10 done (11th col)
+	//r8+r2 carry for 12th before col
+	//r9+C carry for 12th final col
+	
+	//mul 47, 56
+	movs r3,#0
+	umaal r3,r8,r4,r7 //r4 is now dead
+	umaal r3,r2,r5,r6
+	adcs r3,r3,r3
+	umaal r9,r3,lr,lr
+	
+	//r9 done (12th col)
+	//r8+r2 carry for 13th before col
+	//r3+C carry for 13th final col
+	
+	//mul 57, 66
+	umaal r8,r2,r5,r7 //r5 is now dead
+	adcs r8,r8,r8
+	umaal r3,r8,r6,r6
+	
+	//r3 done (13th col)
+	//r2 carry for 14th before col
+	//r8+C carry for 14th final col
+	
+	//mul 67
+	umull r4,r5,lr,lr // set 0
+	umaal r4,r2,r6,r7
+	adcs r4,r4,r4
+	umaal r4,r8,lr,lr
+	
+	//r4 done (14th col)
+	//r2 carry for 15th before col
+	//r8+C carry for 15th final col
+	
+	//mul 77
+	adcs r2,r2,r2
+	umaal r8,r2,r7,r7
+	adcs r2,r2,lr
+	
+	//r8 done (15th col)
+	//r2 done (16th col)
+	
+	//msb -> lsb: r2 r8 r4 r3 r9 r10 r12 r11 r0 sp+24 sp+20 sp+16 sp+12 sp+8 sp+4 sp
+	//lr: 0
+	//now do reduction
+	
+	mov r6,#38
+	umaal r0,lr,r6,r2
+	lsl lr,lr,#1
+	orr lr,lr,r0, lsr #31
+	and r7,r0,#0x7fffffff
+	movs r5,#19
+	mul lr,lr,r5
+	
+	pop {r0,r1} //@slothy:reads=[stack0,stack1]
+	//frame address sp,24
+	umaal r0,lr,r6,r11
+	umaal r1,lr,r6,r12
+	
+	mov r11,r3
+	mov r12,r4
+	
+	pop {r2,r3,r4,r5} //@slothy:reads=[stack2,stack3,stack4,stack5] 
+	//frame address sp,8
+	umaal r2,lr,r6,r10
+	umaal r3,lr,r6,r9
+	
+	umaal r4,lr,r6,r11
+	umaal r5,lr,r6,r12
+	
+	pop {r6} //@slothy:reads=[stack6]
+	//frame address sp,4
+	mov r12,#38
+	umaal r6,lr,r12,r8
+	add r7,r7,lr
+.endm
 
 // in: *r0 = result, *r1 = scalar, *r2 = basepoint (all pointers may be unaligned)
 // cycles: 548 873
 	.type curve25519_scalarmult, %function
 curve25519_scalarmult:
 	.global curve25519_scalarmult
-	
-	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
-	//               0  32 64 96 128 160    164     168    200        204
 
+	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
+	//               0  32 64 96 128 160    164     168    200        204       = 1216
 	push {r0,r4-r11,lr}
+
+
 slothy_start:
 	//frame push {r4-r11,lr}
 	//frame address sp,40
@@ -169,8 +609,8 @@ slothy_start:
 	
 	fe25519_sqr
 	push {r0-r7}
-	//frame address sp,304
-	
+	// frame address sp,304
+
 	add r8,sp,#64
 	add r9,sp,#96
 	fe25519_sub r8, r9
@@ -186,7 +626,7 @@ slothy_start:
 	fe25519_mul r8, r9
 	add r8,sp,#128
 	stm r8,{r0-r7}
-	
+
 	add r8,sp,#64
 	mov r9,sp
 	fe25519_sub r8, r9
@@ -196,7 +636,9 @@ slothy_start:
 	// 64 + 1*45 + 2*46 + 1*173 + 2*115 = 604 cycles
 	
 	//multiplies (r0-r7) with 121666, adds *sp and puts the result on the top of the stack (replacing old content)
-	ldr lr,=121666
+	movw lr,#:lower16:121666
+	movt lr,#:upper16:121666
+
 	//mov lr,#56130
 	//add lr,lr,#65536
 	ldr r12,[sp,#28]
@@ -326,7 +768,7 @@ slothy_start:
 	// now we must invert zp
 	add r0,sp,#32
 	ldm r0,{r0-r7}
-	bl fe25519_sqr
+	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,272
 	
@@ -337,6 +779,7 @@ slothy_start:
 	
 	add r1,sp,#96
 	mov r2,sp
+// got error
 	fe25519_mul r8, r9
 	stm sp,{r0-r7}
 	
@@ -362,7 +805,7 @@ slothy_start:
 	
 	mov r8,#5
 	// 1052 cycles
-	bl fe25519_sqr_many // 634 cycles
+	//bl fe25519_sqr_many // 634 cycles
 	
 	mov r1,sp
 	add r2,sp,#32
@@ -373,7 +816,7 @@ slothy_start:
 	// current stack: _ z^(2^10 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#10
-	bl fe25519_sqr_many // 1249 cycles
+	//bl fe25519_sqr_many // 1249 cycles
 	//z^(2^20 - 2^10)
 	
 	mov r1,sp
@@ -388,21 +831,6 @@ slothy_start:
 	sub sp,sp,#32
 	//frame address sp,368
 	//bl fe25519_sqr_many // 2479 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}
 	//z^(2^40 - 2^20)
 	
 	mov r1,sp
@@ -414,21 +842,6 @@ loop_start:
 	
 	movs r8,#10
 	//bl fe25519_sqr_many // 1249 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}
 	//z^(2^50 - 2^10)
 	
 	mov r1,sp
@@ -441,21 +854,6 @@ loop_start:
 	
 	movs r8,#50
 	//bl fe25519_sqr_many // 6169 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}
 	//z^(2^100 - 2^50)
 	
 	mov r1,sp
@@ -471,21 +869,6 @@ loop_start:
 	sub sp,sp,#32
 	//frame address sp,368
 	//bl fe25519_sqr_many // 12319 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}	
 	//z^(2^200 - 2^100)
 	
 	mov r1,sp
@@ -499,21 +882,6 @@ loop_start:
 	
 	movs r8,#50
 	//bl fe25519_sqr_many // 6169 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}
 	//z^(2^250 - 2^50)
 	
 	mov r1,sp
@@ -522,22 +890,7 @@ loop_start:
 	//z^(2^250 - 2^0)
 	
 	movs r8,#5
-	//bl fe25519_sqr_many // 634 cycles
-	push {r8,lr}
-	//frame push {r8,lr}
-loop_start:
-	fe25519_sqr
-	
-	ldr r8,[sp,#0]
-	subs r8,r8,#1
-	str r8,[sp,#0]
-	bne loop_start
-	
-	add sp,sp,#4
-	//frame address sp,4
-	add r8,sp,#4
-	stm r8,{r0-r7}
-	pop {pc}	
+	//ƒbl fe25519_sqr_many // 634 cycles
 	//z^(2^255 - 2^5)
 	
 	mov r1,sp
@@ -600,10 +953,10 @@ loop_start:
 	str r5,[r1,#20]
 	str r6,[r1,#24]
 	str r7,[r1,#28]
-	
+
+slothy_end:	
 	add sp,sp,#300
 	//frame address sp,36
-slothy_end:	
 	pop {r4-r11,pc}
 	
 	// 234 cycles after inversion
@@ -623,3 +976,4 @@ slothy_end:
 
 //    pop {r4-r11, lr}
 //	bx lr
+
