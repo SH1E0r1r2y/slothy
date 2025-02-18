@@ -660,39 +660,36 @@ curve25519_scalarmult:
 	movs r7,#19
 	mul r11,r11,r7
 	bic r7,r12,#0x80000000
-	sub sp, sp, #16 //meadd
+	//sub sp, sp, #32 //meadd
 	ldm sp!,{r8,r9,r10,r12} //where did they push?
 	//frame address sp,352
 	umaal r8,r11,lr,r0
 	umaal r9,r11,lr,r1
 	umaal r10,r11,lr,r2
 	umaal r12,r11,lr,r3
-	sub sp, sp, #12 //meadd	
 	ldm sp!,{r0,r1,r2}
 	//frame address sp,340
 	umaal r0,r11,lr,r4
 	umaal r1,r11,lr,r5
 	umaal r2,r11,lr,r6
 	add r7,r7,r11
-	sub sp, sp, #4 //meadd	
 	add sp,sp,#4
-
 	//frame address sp,338
 	push {r0,r1,r2,r7}
 	//frame address sp,352
 	push {r8,r9,r10,r12}
 	//frame address sp,368
 	// 39 cycles
-	
+
 	mov r1,sp
 	add r2,sp,#64
 	fe25519_mul r1, r2
 	add r8,sp,#160
 	stm r8,{r0-r7}
-	
+
 	add r8,sp,#192
 	add r9,sp,#224
-	fe25519_add r8, r8
+	fe25519_add r8, r9
 	stm sp,{r0-r7}
 	
 	mov r1,sp
@@ -700,18 +697,7 @@ curve25519_scalarmult:
 	fe25519_mul r1, r2
 	add r8,sp,#32
 	stm r8,{r0-r7}
-	
-	add r8,sp,#192
-	add r9,sp,#224
-	fe25519_sub r8,r9
-	stm sp,{r0-r7}
-	
-	mov r1,sp
-	add r2,sp,#32
-	fe25519_mul r1, r2
-	add r8,sp,#32
-	stm r8,{r0-r7}
-	
+
 	add r8,sp,#192
 	add r9,sp,#224
 	fe25519_sub r8, r9
@@ -721,7 +707,7 @@ curve25519_scalarmult:
 	add r2,sp,#96
 	fe25519_mul r1, r2
 	stm sp,{r0-r7}
-	
+
 	mov r8,sp
 	add r9,sp,#32
 	fe25519_add r8, r9
@@ -737,14 +723,13 @@ curve25519_scalarmult:
 
 	fe25519_sqr
 	stm sp,{r0-r7}
-	
+
 	mov r1,sp
 	add r2,sp,#256
 	fe25519_mul r1,r2
 	add r8,sp,#224
 	stm r8,{r0-r7}
-	
-	sub sp, sp, #128 //meadd	
+
 	add sp,sp,#128
 	//frame address sp,240
 
@@ -808,15 +793,15 @@ curve25519_scalarmult:
 	mov r2,sp
 	fe25519_mul r1, r2
 	stm sp,{r0-r7}
-	
+
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
 	add r8,sp,#32
 	stm r8,{r0-r7}
-	
+
 	// current stack: z^(2^9) z^(2^11) x z
-	
+
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,336
@@ -832,7 +817,7 @@ curve25519_scalarmult:
 	mov r8,#5
 	// 1052 cycles
 	fe25519_sqr_many // 634 cycles
-	
+
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
@@ -854,20 +839,18 @@ curve25519_scalarmult:
 	// current stack: z^(2^20 - 2^0) z^(2^10 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#20
-	add sp,sp, #32 //meadd
 	sub sp,sp,#32
 	//frame address sp,368
 	fe25519_sqr_many // 2479 cycles
 	//z^(2^40 - 2^20)
-
+	
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
 	add sp,sp,#32
-	sub sp,sp, #32 //meadd
 	//frame address sp,336
 	//z^(2^40 - 2^0)
-	
+
 	movs r8,#10
 	fe25519_sqr_many // 1249 cycles
 	//z^(2^50 - 2^10)
@@ -883,7 +866,7 @@ curve25519_scalarmult:
 	movs r8,#50
 	fe25519_sqr_many // 6169 cycles
 	//z^(2^100 - 2^50)
-
+	
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
@@ -892,28 +875,26 @@ curve25519_scalarmult:
 	// 13751 cycles so far for inversion
 	
 	// current stack: z^(2^100 - 2^0) z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
-	
+
 	movs r8,#100
-	add sp,sp, #32 //meadd
 	sub sp,sp,#32
 	//frame address sp,368
 	fe25519_sqr_many // 12319 cycles
 	//z^(2^200 - 2^100)
-
+	
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
 	add sp,sp,#32
-	sub sp,sp, #32 //meadd
 	//frame address sp,336
 	//z^(2^200 - 2^0)
 	
 	// current stack: _ z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
-	
+
 	movs r8,#50
 	fe25519_sqr_many // 6169 cycles
 	//z^(2^250 - 2^50)
-
+	
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
@@ -933,7 +914,7 @@ curve25519_scalarmult:
 	
 	// done inverting!
 	// total inversion cost: 33412 cycles
-
+	
 	mov r1,sp
 	add r2,sp,#96
 	fe25519_mul r1, r2
@@ -956,7 +937,7 @@ curve25519_scalarmult:
 	adcs r8,r6,r10
 	adcs r8,r7,r10
 	adcs r11,r10,r10
-
+	
 	lsr r8,r8,#31
 	orr r8,r8,r11, lsl #1
 	mul r8,r8,r9
@@ -976,39 +957,18 @@ curve25519_scalarmult:
 	adcs r6,r6,r0
 	adcs r7,r7,r0
 	and r7,r7,#0x7fffffff
-
+	
 	str r2,[r1,#8]
 	str r3,[r1,#12]
 	str r4,[r1,#16]
 	str r5,[r1,#20]
 	str r6,[r1,#24]
 	str r7,[r1,#28]
-	
+
 	add sp,sp,#300
-	sub sp,sp, #300 //meadd
 	//frame address sp,36
 
-	pop {r0-r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r8,r9,r10,r12} //meadd
-	pop {r0,r1,r2,r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r0-r7} //meadd
-	pop {r9,r10,r11,r12} //meadd
-  	pop {r6,r7,r8,r10,r11,r12} //meadd
-  	pop {r6,r7,r8,r10,r11,r12} //meadd
-	pop {r0-r7} //meadd
-	pop {r9,r10,r11,r12} //meadd
-	pop {r8,r10,r11,r12} //meadd
-	pop {r0-r7} //meadd
-	pop {r2,r8} //meadd
-	pop {r0-r7} //meadd
 
-
-	pop {r0} //meadd
     pop {r4-r11, lr}
 	bx lr
 	
