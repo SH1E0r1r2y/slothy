@@ -968,7 +968,26 @@ curve25519_scalarmult:
 	add sp,sp,#300
 	//frame address sp,36
 
+	//pop {r0-r7} //meadd
+	//pop {r0-r7} //meadd
+	//pop {r0-r7} //meadd
+	////pop {r8,r9,r10,r12} //meadd
+	////pop {r0,r1,r2,r7} //meadd
+	////pop {r0-r7} //meadd
+	////pop {r0-r7} //meadd
+	////pop {r0-r7} //meadd
+	////pop {r0-r7} //meadd
+	//pop {r9,r10,r11,r12} //meadd
+  	//pop {r6,r7,r8,r10,r11,r12} //meadd
+  	//pop {r6,r7,r8,r10,r11,r12} //meadd
+	//pop {r0-r7} //meadd
+	//pop {r9,r10,r11,r12} //meadd
+	//pop {r8,r10,r11,r12} //meadd
+	//pop {r0-r7} //meadd
+	//pop {r2,r8} //meadd
+	//pop {r0-r7} //meadd
 
+	//pop {r0} //meadd
     pop {r4-r11, lr}
 	bx lr
 	
