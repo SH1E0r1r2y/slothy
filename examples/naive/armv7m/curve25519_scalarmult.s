@@ -505,6 +505,7 @@ curve25519_scalarmult:
 	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
 	//               0  32 64 96 128 160    164     168    200        204       = 1216
     push {r0,r4-r11, lr}
+	mov r11,r1
 	mov r10,r2
 	//bl loadm
 	ldr r0,[r10,#0]
@@ -526,7 +527,7 @@ curve25519_scalarmult:
 	//frame address sp,80
 	
 	//ldm r1,{r0-r7}
-	mov r1,r10
+	mov r1,r11
 	//bl loadm
 	ldr r0,[r1,#0]
 	ldr r2,[r1,#8]
@@ -998,6 +999,5 @@ curve25519_scalarmult:
 
 //// in: *r0 = result, *r1 = scalar, *r2 = basepoint (all pointers may be unaligned)
 //// cycles: 548 873
-
 
 
