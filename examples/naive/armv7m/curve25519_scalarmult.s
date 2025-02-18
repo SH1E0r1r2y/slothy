@@ -322,7 +322,7 @@
 
 .macro fe25519_mul inputRa,inputRb
 	push {r2}
-	sub sp,#28
+	sub sp,#28 //can't used in slothy
 	//frame address sp,36
 	ldm r2,{r2,r3,r4,r5}
 
@@ -505,17 +505,16 @@ curve25519_scalarmult:
 	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
 	//               0  32 64 96 128 160    164     168    200        204       = 1216
     push {r0,r4-r11, lr}
-	mov r11,r1
 	mov r10,r2
-	//bl loadm
-	ldr r0,[r10,#0]
-	ldr r2,[r10,#8]
-	ldr r3,[r10,#12]
-	ldr r4,[r10,#16]
-	ldr r5,[r10,#20]
-	ldr r6,[r10,#24]
-	ldr r7,[r10,#28]
-	ldr r1,[r10,#4]
+	//bl loadm：scalar
+	ldr r0,[r1,#0]
+	ldr r2,[r1,#8]
+	ldr r3,[r1,#12]
+	ldr r4,[r1,#16]
+	ldr r5,[r1,#20]
+	ldr r6,[r1,#24]
+	ldr r7,[r1,#28]
+	ldr r1,[r1,#4]
 
 	and r0,r0,#0xfffffff8
 	//and r7,r7,#0x7fffffff not needed since we don't inspect the msb anyway
@@ -527,8 +526,8 @@ curve25519_scalarmult:
 	//frame address sp,80
 	
 	//ldm r1,{r0-r7}
-	mov r1,r11
-	//bl loadm
+	mov r1,r10
+	//bl loadm:basepoint
 	ldr r0,[r1,#0]
 	ldr r2,[r1,#8]
 	ldr r3,[r1,#12]

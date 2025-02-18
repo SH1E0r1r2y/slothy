@@ -48,7 +48,6 @@
 
 	
 .macro fe25519_sqr 
-	sub sp,#20 
 	//mul 01, 00
 	umull r9,r10,r0,r0
 	umull r11,r12,r0,r1
@@ -249,7 +248,6 @@
 	.global fe25519_sqr_wrap
 fe25519_sqr_wrap:
     push {r4-r11, lr}
-slothy_start:
     push {r0}
 	
 	ldr r1, [r0, #4] 
@@ -260,7 +258,8 @@ slothy_start:
 	ldr r6, [r0, #24]
 	ldr r7, [r0, #28]
 	ldr r0, [r0] 
-
+	sub sp,#20
+slothy_start:
 	fe25519_sqr
 	pop {r8}
 	
