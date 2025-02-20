@@ -1,3 +1,5 @@
+.syntax unified
+.thumb
 // Curve25519 scalar multiplication
 // Copyright (c) 2017, Emil Lenngren
 //
@@ -38,11 +40,280 @@
 // assuming no wait states), and no conditional branches or memory access
 // pattern dep on secret data.
 
-.thumb
-.syntax unified
+	.text
+	.align 2
 
+// input: *r8=a, *r9=b
+// output: r0-r7
+// clobbers all other registers
+// cycles: 45
+.macro fe25519_add inputRa, inputRb
+ 	ldr r0,[r8,#28]
+ 	ldr r4,[r9,#28]
+ 	adds r0,r0,r4
+ 	mov r11,#0
+ 	adc r11,r11,r11
+ 	lsl r11,r11,#1
+ 	add r11,r11,r0, lsr #31
+ 	movs r7,#19
+ 	mul r11,r11,r7
+ 	bic r7,r0,#0x80000000
+ 	ldm r8!,{r0-r3} //changed from ldm \inputRa!,{r0-r3}
+ 	ldm r9!,{r4-r6,r10} 
+ 	mov r12,#1
+ 	umaal r0,r11,r12,r4
+ 	umaal r1,r11,r12,r5
+ 	umaal r2,r11,r12,r6
+ 	umaal r3,r11,r12,r10
+ 	ldm r9,{r4-r6}
+	ldm r8,{r8-r10}
+ 	umaal r4,r11,r12,r8
+ 	umaal r5,r11,r12,r9
+ 	umaal r6,r11,r12,r10
+ 	add r7,r7,r11
+.endm
+
+// input: *r8=a, *r9=b
+// output: r0-r7
+// clobbers all other registers
+// cycles: 46
+.macro fe25519_sub inputRa,inputRb
+	ldm r8,{r0-r7}
+	ldm r9!,{r8,r10-r12}
+	subs r0,r8
+	sbcs r1,r10
+	sbcs r2,r11
+	sbcs r3,r12
+	ldm r9,{r8-r11}
+	sbcs r4,r8
+	sbcs r5,r9
+	sbcs r6,r10
+	sbcs r7,r11
+
+	// if subtraction goes below 0, set r8 to -1 and r9 to -38, else set both to 0
+	sbc r8,r8
+	and r9,r8,#-38
+
+	adds r0,r9
+	adcs r1,r8
+	adcs r2,r8
+	adcs r3,r8
+	adcs r4,r8
+	adcs r5,r8
+	adcs r6,r8
+	adcs r7,r8
+
+	// if the subtraction did not go below 0, we are done and (r8,r9) are set to 0
+	// if the subtraction went below 0 and the addition overflowed, we are done, so set (r8,r9) to 0
+	// if the subtraction went below 0 and the addition did not overflow, we need to add once more
+	// (r8,r9) will be correctly set to (-1,-38) only when r8 was -1 and we don't have a carry,
+	// note that the carry will always be 0 in case (r8,r9) was (0,0) since then there was no real addition
+	// also note that it is extremely unlikely we will need an extra addition:
+	//   that can only happen if input1 was slightly >= 0 and input2 was > 2^256-38 (really input2-input1 > 2^256-38)
+	//   in that case we currently have 2^256-38 < (r0...r7) < 2^256, so adding -38 will only affect r0
+	adcs r8,#0
+	and r9,r8,#-38
+
+	adds r0,r9
+.endm
+
+// input: *r1=a, *r2=b
+// output: r0-r7
+// clobbers all other registers
+// cycles: 173
+.macro fe25519_mul inputRa,inputRb
+	mov r11,lr //to store lr
+	push {r11}
+	mov r11,#0
+	push {r2}
+
+	sub sp,#28 //can't used in slothy
+	//frame address sp,36
+	ldm r2,{r2,r3,r4,r5}
+
+	ldm r1!,{r0,r10,lr}
+	umull r6,r11,r2,r0
+
+	umull r7,r12,r3,r0
+	umaal r7,r11,r2,r10
+
+	push {r6,r7}  //@slothy:writes=[stack1,stack2]
+	//frame address sp,44
+
+	umull r8,r6,r4,r0
+	umaal r8,r11,r3,r10
+
+	umull r9,r7,r5,r0
+	umaal r9,r11,r4,r10
+
+	umaal r11,r7,r5,r10
+
+	umaal r8,r12,r2,lr
+	umaal r9,r12,r3,lr
+	umaal r11,r12,r4,lr
+	umaal r12,r7,r5,lr
+
+	ldm r1!,{r0,r10,lr}
+
+	umaal r9,r6,r2,r0
+	umaal r11,r6,r3,r0
+	umaal r12,r6,r4,r0
+	umaal r6,r7,r5,r0
+
+	strd r8,r9,[sp,#8]  //@slothy:writes=[stack3,stack4]
+
+	mov r9,#0
+	umaal r11,r9,r2,r10
+	umaal r12,r9,r3,r10
+	umaal r6,r9,r4,r10
+	umaal r7,r9,r5,r10
+
+	mov r10,#0
+	umaal r12,r10,r2,lr
+	umaal r6,r10,r3,lr
+	umaal r7,r10,r4,lr
+	umaal r9,r10,r5,lr
+
+	ldr r8,[r1],#4
+	mov lr,#0
+	umaal lr,r6,r2,r8
+	umaal r7,r6,r3,r8
+	umaal r9,r6,r4,r8
+	umaal r10,r6,r5,r8
+
+	//_ _ _ _ _ 6 10 9| 7 | lr 12 11 _ _ _ _
+
+	ldr r8,[r1],#-28
+	mov r0,#0
+	umaal r7,r0,r2,r8
+	umaal r9,r0,r3,r8
+	umaal r10,r0,r4,r8
+	umaal r6,r0,r5,r8
+
+	push {r0}  //@slothy:writes=[stack0]
+	//frame address sp,48
+
+	//_ _ _ _ s 6 10 9| 7 | lr 12 11 _ _ _ _
+
+	ldr r2,[sp,#40]
+	adds r2,r2,#16
+	ldm r2,{r2,r3,r4,r5}
+
+	ldr r8,[r1],#4
+	mov r0,#0
+	umaal r11,r0,r2,r8
+	str r11,[sp,#16+4]  //@slothy:writes=[stack5]
+	umaal r12,r0,r3,r8
+	umaal lr,r0,r4,r8
+	umaal r0,r7,r5,r8 // 7=carry for 9
+
+	//_ _ _ _ s 6 10 9+7| 0 | lr 12 _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov r11,#0
+	umaal r12,r11,r2,r8
+	str r12,[sp,#20+4]  //@slothy:writes=[stack6]
+	umaal lr,r11,r3,r8
+	umaal r0,r11,r4,r8
+	umaal r11,r7,r5,r8 // 7=carry for 10
+
+	//_ _ _ _ s 6 10+7 9+11| 0 | lr _ _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov r12,#0
+	umaal lr,r12,r2,r8
+	str lr,[sp,#24+4]  //@slothy:writes=[stack7]
+	umaal r0,r12,r3,r8
+	umaal r11,r12,r4,r8
+	umaal r10,r12,r5,r8 // 12=carry for 6
+
+	//_ _ _ _ s 6+12 10+7 9+11| 0 | _ _ _ _ _ _ _
+
+	ldr r8,[r1],#4
+	mov lr,#0
+	umaal r0,lr,r2,r8
+	str r0,[sp,#28+4]  //@slothy:writes=[stack8]
+	umaal r11,lr,r3,r8
+	umaal r10,lr,r4,r8
+	umaal r6,lr,r5,r8 // lr=carry for saved
+
+	//_ _ _ _ s+lr 6+12 10+7 9+11| _ | _ _ _ _ _ _ _
+
+	ldm r1!,{r0,r8}
+	umaal r11,r9,r2,r0
+	str r11,[sp,#32+4]  //@slothy:writes=[stack9]
+	umaal r9,r10,r3,r0
+	umaal r10,r6,r4,r0
+	pop {r11}  //@slothy:reads=[stack0]
+	//frame address sp,44
+	umaal r11,r6,r5,r0 // 6=carry for next
+
+	//_ _ _ 6 11+lr 10+12 9+7 _ | _ | _ _ _ _ _ _ _
+
+	umaal r9,r7,r2,r8
+	umaal r10,r7,r3,r8
+	umaal r11,r7,r4,r8
+	umaal r6,r7,r5,r8
+
+	ldm r1!,{r0,r8}
+	umaal r10,r12,r2,r0
+	umaal r11,r12,r3,r0
+	umaal r6,r12,r4,r0
+	umaal r7,r12,r5,r0
+
+	umaal r11,lr,r2,r8
+	umaal r6,lr,r3,r8
+	umaal lr,r7,r4,r8
+	umaal r7,r12,r5,r8
+
+	// 12 7 lr 6 11 10 9 stack*9
+
+	//now reduce
+
+	ldrd r4,r5,[sp,#28] // @slothy:reads=[stack8,stack9]
+	movs r3,#38
+	mov r8,#0
+	umaal r4,r8,r3,r12
+	lsl r8,r8,#1
+	orr r8,r8,r4, lsr #31
+	and r12,r4,#0x7fffffff
+	movs r4,#19
+	mul r8,r8,r4
+
+	pop {r0-r2} //@slothy:reads=[stack1,stack2,stack3]
+	//frame address sp,32
+	umaal r0,r8,r3,r5
+	umaal r1,r8,r3,r9
+	umaal r2,r8,r3,r10
+	mov r9,#38
+	pop {r3,r4}   //@slothy:reads=[stack4,stack5]
+	//frame address sp,24
+	umaal r3,r8,r9,r11
+	umaal r4,r8,r9,r6
+	pop {r5,r6}  //@slothy:reads=[stack6,stack7]
+	//frame address sp,16
+	umaal r5,r8,r9,lr
+	umaal r6,r8,r9,r7
+	add r7,r8,r12
+
+	add sp,#12
+	//frame address sp,4
+	//pop {pc}
+	pop {r11}
+
+.endm	
+
+// input/result in (r0-r7)
+// clobbers all other registers
+// cycles: 115
 .macro fe25519_sqr 
+	//push {lr}
+	mov r11,lr //to store lr
+	push {r11}
+	mov r11,#0
+	//frame push {lr}
 	sub sp,#20 
+	//frame address sp,24
 	//mul 01, 00
 	umull r9,r10,r0,r0
 	umull r11,r12,r0,r1
@@ -235,75 +506,17 @@
 	mov r12,#38
 	umaal r6,lr,r12,r8
 	add r7,r7,lr
-.endm
 
-.macro fe25519_sub inputRa,inputRb
-	ldm r8, {r0-r7}
-	ldm r9!,{r8,r10-r12}
-	subs r0,r8
-	sbcs r1,r10
-	sbcs r2,r11
-	sbcs r3,r12
-	ldm r9,{r8-r11}
-	sbcs r4,r8
-	sbcs r5,r9
-	sbcs r6,r10
-	sbcs r7,r11
+	//pop {pc}
+	pop {r11}
 
-	// if subtraction goes below 0, set r8 to -1 and r9 to -38, else set both to 0s
-	sbc r8,r8
-	and r9,r8,#-38
-
-	adds r0,r9
-	adcs r1,r8
-	adcs r2,r8
-	adcs r3,r8
-	adcs r4,r8
-	adcs r5,r8
-	adcs r6,r8
-	adcs r7,r8
-
-	// if the subtraction did not go below 0, we are done and (r8,r9) are set to 0
-	// if the subtraction went below 0 and the addition overflowed, we are done, so set (r8,r9) to 0
-	// if the subtraction went below 0 and the addition did not overflow, we need to add once more
-	// (r8,r9) will be correctly set to (-1,-38) only when r8 was -1 and we don't have a carry,
-	// note that the carry will always be 0 in case (r8,r9) was (0,0) since then there was no real addition
-	// also note that it is extremely unlikely we will need an extra addition:
-	//   that can only happen if input1 was slightly >= 0 and input2 was > 2^256-38 (really input2-input1 > 2^256-38)
-	//   in that case we currently have 2^256-38 < (r0...r7) < 2^256, so adding -38 will only affect r0
-	adcs r8,#0
-	and r9,r8,#-38
-
-	adds r0,r9
-.endm
-
-.macro fe25519_add inputRa, inputRb
- 	ldr r0,[r8,#28]
- 	ldr r4,[r9,#28]
- 	adds r0,r0,r4
- 	mov r11,#0
- 	adc r11,r11,r11
- 	lsl r11, r11, #1
- 	add r11, r11, r0, lsr #31
- 	movs r7, #19
- 	mul r11, r11, r7
- 	bic r7, r0, #0x80000000
- 	ldm r8!,{r0-r3} //changed from ldm \inputRa!,{r0-r3}
- 	ldm r9!,{r4-r6,r10} 
- 	mov r12, #1
- 	umaal r0, r11, r12, r4
- 	umaal r1, r11, r12, r5
- 	umaal r2, r11, r12, r6
- 	umaal r3, r11, r12, r10
- 	ldm r9,{r4-r6}
-	ldm r8,{r8-r10}
- 	umaal r4, r11, r12, r8
- 	umaal r5, r11, r12, r9
- 	umaal r6, r11, r12, r10
- 	add r7, r7, r11
 .endm
 
 .macro fe25519_sqr_many
+	mov r11,lr //to store lr
+	push {r11}
+	mov r11,#0
+	
 	push {r8}
 	//frame push {r8,lr}
 0:
@@ -318,183 +531,9 @@
 	//frame address sp,4
 	add r8,sp,#4
 	stm r8,{r0-r7}
+	//pop {pc}
+	pop {r11}
 .endm
-
-.macro fe25519_mul inputRa,inputRb
-	push {r2}
-	sub sp,#28 //can't used in slothy
-	//frame address sp,36
-	ldm r2,{r2,r3,r4,r5}
-
-	ldm r1!,{r0,r10,lr}
-	umull r6,r11,r2,r0
-
-	umull r7,r12,r3,r0
-	umaal r7,r11,r2,r10
-
-	push {r6,r7}  //@slothy:writes=[stack1,stack2]
-	//frame address sp,44
-
-	umull r8,r6,r4,r0
-	umaal r8,r11,r3,r10
-
-	umull r9,r7,r5,r0
-	umaal r9,r11,r4,r10
-
-	umaal r11,r7,r5,r10
-
-	umaal r8,r12,r2,lr
-	umaal r9,r12,r3,lr
-	umaal r11,r12,r4,lr
-	umaal r12,r7,r5,lr
-
-	ldm r1!,{r0,r10,lr}
-
-	umaal r9,r6,r2,r0
-	umaal r11,r6,r3,r0
-	umaal r12,r6,r4,r0
-	umaal r6,r7,r5,r0
-
-	strd r8,r9,[sp,#8]  //@slothy:writes=[stack3,stack4]
-
-	mov r9,#0
-	umaal r11,r9,r2,r10
-	umaal r12,r9,r3,r10
-	umaal r6,r9,r4,r10
-	umaal r7,r9,r5,r10
-
-	mov r10,#0
-	umaal r12,r10,r2,lr
-	umaal r6,r10,r3,lr
-	umaal r7,r10,r4,lr
-	umaal r9,r10,r5,lr
-
-	ldr r8,[r1],#4
-	mov lr,#0
-	umaal lr,r6,r2,r8
-	umaal r7,r6,r3,r8
-	umaal r9,r6,r4,r8
-	umaal r10,r6,r5,r8
-
-	//_ _ _ _ _ 6 10 9| 7 | lr 12 11 _ _ _ _
-
-	ldr r8,[r1],#-28
-	mov r0,#0
-	umaal r7,r0,r2,r8
-	umaal r9,r0,r3,r8
-	umaal r10,r0,r4,r8
-	umaal r6,r0,r5,r8
-
-	push {r0}  //@slothy:writes=[stack0]
-	//frame address sp,48
-
-	//_ _ _ _ s 6 10 9| 7 | lr 12 11 _ _ _ _
-
-	ldr r2,[sp,#40]
-	adds r2,r2,#16
-	ldm r2,{r2,r3,r4,r5}
-
-	ldr r8,[r1],#4
-	mov r0,#0
-	umaal r11,r0,r2,r8
-	str r11,[sp,#16+4]  //@slothy:writes=[stack5]
-	umaal r12,r0,r3,r8
-	umaal lr,r0,r4,r8
-	umaal r0,r7,r5,r8 // 7=carry for 9
-
-	//_ _ _ _ s 6 10 9+7| 0 | lr 12 _ _ _ _ _
-
-	ldr r8,[r1],#4
-	mov r11,#0
-	umaal r12,r11,r2,r8
-	str r12,[sp,#20+4]  //@slothy:writes=[stack6]
-	umaal lr,r11,r3,r8
-	umaal r0,r11,r4,r8
-	umaal r11,r7,r5,r8 // 7=carry for 10
-
-	//_ _ _ _ s 6 10+7 9+11| 0 | lr _ _ _ _ _ _
-
-	ldr r8,[r1],#4
-	mov r12,#0
-	umaal lr,r12,r2,r8
-	str lr,[sp,#24+4]  //@slothy:writes=[stack7]
-	umaal r0,r12,r3,r8
-	umaal r11,r12,r4,r8
-	umaal r10,r12,r5,r8 // 12=carry for 6
-
-	//_ _ _ _ s 6+12 10+7 9+11| 0 | _ _ _ _ _ _ _
-
-	ldr r8,[r1],#4
-	mov lr,#0
-	umaal r0,lr,r2,r8
-	str r0,[sp,#28+4]  //@slothy:writes=[stack8]
-	umaal r11,lr,r3,r8
-	umaal r10,lr,r4,r8
-	umaal r6,lr,r5,r8 // lr=carry for saved
-
-	//_ _ _ _ s+lr 6+12 10+7 9+11| _ | _ _ _ _ _ _ _
-
-	ldm r1!,{r0,r8}
-	umaal r11,r9,r2,r0
-	str r11,[sp,#32+4]  //@slothy:writes=[stack9]
-	umaal r9,r10,r3,r0
-	umaal r10,r6,r4,r0
-	pop {r11}  //@slothy:reads=[stack0]
-	//frame address sp,44
-	umaal r11,r6,r5,r0 // 6=carry for next
-
-	//_ _ _ 6 11+lr 10+12 9+7 _ | _ | _ _ _ _ _ _ _
-
-	umaal r9,r7,r2,r8
-	umaal r10,r7,r3,r8
-	umaal r11,r7,r4,r8
-	umaal r6,r7,r5,r8
-
-	ldm r1!,{r0,r8}
-	umaal r10,r12,r2,r0
-	umaal r11,r12,r3,r0
-	umaal r6,r12,r4,r0
-	umaal r7,r12,r5,r0
-
-	umaal r11,lr,r2,r8
-	umaal r6,lr,r3,r8
-	umaal lr,r7,r4,r8
-	umaal r7,r12,r5,r8
-
-	// 12 7 lr 6 11 10 9 stack*9
-
-	//now reduce
-
-	ldrd r4,r5,[sp,#28] // @slothy:reads=[stack8,stack9]
-	movs r3,#38
-	mov r8,#0
-	umaal r4,r8,r3,r12
-	lsl r8,r8,#1
-	orr r8,r8,r4, lsr #31
-	and r12,r4,#0x7fffffff
-	movs r4,#19
-	mul r8,r8,r4
-
-	pop {r0-r2} //@slothy:reads=[stack1,stack2,stack3]
-	//frame address sp,32
-	umaal r0,r8,r3,r5
-	umaal r1,r8,r3,r9
-	umaal r2,r8,r3,r10
-	mov r9,#38
-	pop {r3,r4}   //@slothy:reads=[stack4,stack5]
-	//frame address sp,24
-	umaal r3,r8,r9,r11
-	umaal r4,r8,r9,r6
-	pop {r5,r6}  //@slothy:reads=[stack6,stack7]
-	//frame address sp,16
-	umaal r5,r8,r9,lr
-	umaal r6,r8,r9,r7
-	add r7,r8,r12
-
-	add sp,#12
-	//frame address sp,4
-
-.endm	
 
 // in: *r0 = result, *r1 = scalar, *r2 = basepoint (all pointers may be unaligned)
 // cycles: 548 873
@@ -544,7 +583,6 @@ curve25519_scalarmult:
 	movs r9,#1
 	umull r10,r11,r8,r8
 	mov r12,#0
-
 	push {r8,r10,r11,r12}
 	//frame address sp,128
 	push {r9,r10,r11,r12}
