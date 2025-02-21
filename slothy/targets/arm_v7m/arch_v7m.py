@@ -1458,6 +1458,11 @@ class log_or(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
     inputs = ["Ra", "Rb"]
     outputs = ["Rd"]
 
+class log_or_imm(Armv7mLogical): # pylint: disable=missing-docstring,invalid-name
+    pattern = "orr<width> <Rd>,<Ra>,<imm>"
+    inputs = ["Ra"]
+    outputs = ["Rd"]
+
 class log_or_shifted(Armv7mShiftedLogical): # pylint: disable=missing-docstring,invalid-name
     pattern = "orr<width> <Rd>,<Ra>,<Rb>,<barrel><imm>"
     inputs = ["Ra", "Rb"]

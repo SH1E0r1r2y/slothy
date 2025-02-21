@@ -122,7 +122,9 @@
 // clobbers all other registers
 // cycles: 173
 .macro fe25519_mul inputRa,inputRb
-	//push {lr}
+	//mov r11,lr //to store lr
+	//push {r11}
+	//mov r11,#0
 	push {r2}
 
 	sub sp,#28 //can't used in slothy
@@ -297,6 +299,7 @@
 	add sp,#12
 	//frame address sp,4
 	//pop {pc}
+	//pop {r11}
 
 .endm	
 
@@ -305,8 +308,12 @@
 // cycles: 115
 .macro fe25519_sqr 
 	//push {lr}
+	//mov r11,lr //to store lr
+	//push {r11}
+	//mov r11,#0
 	//frame push {lr}
-	sub sp,#20 
+	//sub sp,#20 
+	push {r0-r4}
 	//frame address sp,24
 	//mul 01, 00
 	umull r9,r10,r0,r0
@@ -502,14 +509,14 @@
 	add r7,r7,lr
 
 	//pop {pc}
+	//pop {r11}
 
 .endm
 
 .macro fe25519_sqr_many
-	push {lr}
-	//mov r11,lr //to store lr
-	//push {r11}
-	//mov r11,#0
+	mov r11,lr //to store lr
+	push {r11}
+	mov r11,#0
 	
 	push {r8}
 	//frame push {r8,lr}
@@ -596,7 +603,7 @@ curve25519_scalarmult:
 	movs r0,#254
 	movs r3,#0
 	// 129 cycles so far
-0:
+scalar_255:
 	// load scalar bit into r1
 	lsrs r1,r0,#5
 	adds r2,sp,#168
@@ -615,7 +622,7 @@ curve25519_scalarmult:
 	
 	mov r11,#4
 	// 15 cycles
-1:
+Mon_ladder:
 	ldm r0,{r2-r5}
 	ldm r1,{r6-r9}
 	
@@ -643,12 +650,12 @@ curve25519_scalarmult:
 	stm r1!,{r6-r9}
 	
 	subs r11,#1
-	bne 1b
+	bne Mon_ladder
 	// 40*4 - 2 = 158 cycles
 	
 	mov r8,sp
 	add r9,sp,#32
-	fe25519_add r8,r9 
+	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
 	push {r0-r7}
 	//frame address sp,272
 	
@@ -768,7 +775,7 @@ curve25519_scalarmult:
 	ldrd r2,r3,[sp,#160]
 	subs r0,r2,#1
 	// 97 + 2*45 + 2*46 + 4*173 + 2*115 = 1201 cycles
-	bpl 0b
+	bpl scalar_255
 	// in total 2020 cycles per iteration, in total 515 098 cycles for 255 iterations
 
 	//These cswap lines are not needed for curve25519 since the lowest bit is hardcoded to 0

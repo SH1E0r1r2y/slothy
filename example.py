@@ -829,6 +829,9 @@ class Curve25519_scalarmult(Example):
         slothy.config.inputs_are_outputs = True
         slothy.config.constraints.functional_only = False
         slothy.config.outputs = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        slothy.optimize_loop("0") #Q:If I change name to "255_scalar" ,got "Couldn't identify loop 255_scalar" 
+        slothy.optimize_loop("scalar_255")
+        slothy.optimize_loop("Mon_ladder")
         slothy.optimize(start="slothy_start", end="slothy_end")
 
 class Armv7mLoopSubs(Example):

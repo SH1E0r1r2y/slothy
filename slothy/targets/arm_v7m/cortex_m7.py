@@ -169,6 +169,7 @@ execution_units = {
         # To check:didn't have log_and_shifted,is't execute?
         log_and_imm,
         log_or,
+        log_or_imm,
         eor, eor_short, eors, eors_short,
         bic_imm,
         bic, bics,
@@ -239,6 +240,7 @@ inverse_throughput = {
         log_and, log_and_shifted,
         log_and_imm,
         log_or, log_or_shifted,
+        log_or_imm,
         eor, eor_short, eors, eors_short,
         eor_shifted,
         bic_imm,
@@ -299,6 +301,7 @@ default_latencies = {
         log_and, log_and_shifted,
         log_and_imm,
         log_or, log_or_shifted,
+        log_or_imm,
         eor, eor_short, eors, eors_short,
         bic_imm,
         bic, bics,
