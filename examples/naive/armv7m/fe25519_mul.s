@@ -54,9 +54,9 @@ fe25519_mul:
 	//frame address sp,8
 
 .macro fe25519_mul_a inputRa,inputRb
-	mov r11,lr //to store lr
-	push {r11}
-	mov r11,#0
+	//mov r11,lr //to store lr
+	//push {r11}
+	//mov r11,#0
 
 	push {r2}
 	
@@ -231,7 +231,8 @@ slothy_start:
 slothy_end:
 	add sp,#12
 	//frame address sp,4
-	pop {r11}
+	//pop {r11}
+	//pop {pc}
 
 .endm	
 

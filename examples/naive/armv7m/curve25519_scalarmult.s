@@ -122,9 +122,7 @@
 // clobbers all other registers
 // cycles: 173
 .macro fe25519_mul inputRa,inputRb
-	mov r11,lr //to store lr
-	push {r11}
-	mov r11,#0
+	//push {lr}
 	push {r2}
 
 	sub sp,#28 //can't used in slothy
@@ -299,7 +297,6 @@
 	add sp,#12
 	//frame address sp,4
 	//pop {pc}
-	pop {r11}
 
 .endm	
 
@@ -308,9 +305,6 @@
 // cycles: 115
 .macro fe25519_sqr 
 	//push {lr}
-	mov r11,lr //to store lr
-	push {r11}
-	mov r11,#0
 	//frame push {lr}
 	sub sp,#20 
 	//frame address sp,24
@@ -508,14 +502,14 @@
 	add r7,r7,lr
 
 	//pop {pc}
-	pop {r11}
 
 .endm
 
 .macro fe25519_sqr_many
-	mov r11,lr //to store lr
-	push {r11}
-	mov r11,#0
+	push {lr}
+	//mov r11,lr //to store lr
+	//push {r11}
+	//mov r11,#0
 	
 	push {r8}
 	//frame push {r8,lr}
@@ -654,7 +648,7 @@ curve25519_scalarmult:
 	
 	mov r8,sp
 	add r9,sp,#32
-	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
+	fe25519_add r8,r9 
 	push {r0-r7}
 	//frame address sp,272
 	
