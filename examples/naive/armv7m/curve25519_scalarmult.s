@@ -545,6 +545,8 @@ curve25519_scalarmult:
 	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
 	//               0  32 64 96 128 160    164     168    200        204       = 1216
     push {r0,r4-r11, lr}
+	
+slothy_start:
 	mov r10,r2
 	//bl loadm：scalar
 	ldr r0,[r1,#0]
@@ -603,26 +605,30 @@ curve25519_scalarmult:
 	movs r0,#254
 	movs r3,#0
 	// 129 cycles so far
-scalar_255:
+0:
 	// load scalar bit into r1
 	lsrs r1,r0,#5
-	adds r2,sp,#168
+	sub sp,#20 //20
+	adds r2,sp,#188 //20
+	
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
 	
-	strd r0,r1,[sp,#160]
-	
+	strd r0,r1,[sp,#180] //20
+
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	
+	add sp,#20 //20
 	mov r0,sp
-	add r1,sp,#64
 	
-	mov r11,#4
+	add r1,sp,#64
+
+	
+	//mov r11,#4
 	// 15 cycles
-Mon_ladder:
+.rept 4
 	ldm r0,{r2-r5}
 	ldm r1,{r6-r9}
 	
@@ -649,8 +655,9 @@ Mon_ladder:
 	stm r0!,{r2-r5}
 	stm r1!,{r6-r9}
 	
-	subs r11,#1
-	bne Mon_ladder
+	//subs r11,#1
+	//bne 1b
+.endr
 	// 40*4 - 2 = 158 cycles
 	
 	mov r8,sp
@@ -775,7 +782,7 @@ Mon_ladder:
 	ldrd r2,r3,[sp,#160]
 	subs r0,r2,#1
 	// 97 + 2*45 + 2*46 + 4*173 + 2*115 = 1201 cycles
-	bpl scalar_255
+	bpl 0b
 	// in total 2020 cycles per iteration, in total 515 098 cycles for 255 iterations
 
 	//These cswap lines are not needed for curve25519 since the lowest bit is hardcoded to 0
@@ -1003,7 +1010,7 @@ Mon_ladder:
 	str r5,[r1,#20]
 	str r6,[r1,#24]
 	str r7,[r1,#28]
-
+slothy_end:
 	add sp,sp,#300
 	//frame address sp,36
 
