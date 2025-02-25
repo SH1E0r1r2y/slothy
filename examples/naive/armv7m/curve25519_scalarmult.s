@@ -569,11 +569,12 @@ curve25519_scalarmult:
 
 	// stack layout: xp zp xq zq x0  bitpos lastbit scalar result_ptr r4-r11,lr
 	//               0  32 64 96 128 160    164     168    200        204       = 1216
-    sub sp,#28
-	mov r3,sp //set frame pointer?無法，r3 r11 都會用到
-	push {r3}
-	mov r3,#0
+    //sub sp,#28
+	//mov r3,sp //set frame pointer?無法，r3 r11 都會用到
+	//push {r3}
+	//mov r3,#0
 	push {r0,r4-r11, lr}
+	sub sp,#200
 slothy_start:
 	mov r10,r2
 	//bl loadm：scalar
@@ -589,10 +590,15 @@ slothy_start:
 	and r0,r0,#0xfffffff8
 	//and r7,r7,#0x7fffffff not needed since we don't inspect the msb anyway
 	orr r7,r7,#0x40000000
-	push {r0-r7}
+	//push {r0-r7}
+	strd r0,r1,[sp,#168]
+	strd r2,r3,[sp,#176]
+	strd r4,r5,[sp,#184]
+	strd r6,r7,[sp,#192]
 	//frame address sp,72
 	movs r8,#0
-	push {r2,r8}
+	//push {r2,r8}
+	strd r2,r8,[sp,#160]
 	//frame address sp,80
 	
 	//ldm r1,{r0-r7}
@@ -608,48 +614,68 @@ slothy_start:
 	ldr r1,[r1,#4]
 
 	and r7,r7,#0x7fffffff
-	push {r0-r7}
+	//push {r0-r7}
+	strd r0,r1,[sp,#128]
+	strd r2,r3,[sp,#136]
+	strd r4,r5,[sp,#144]
+	strd r6,r7,[sp,#152]
 	//frame address sp,112
 	
 	movs r9,#1
 	umull r10,r11,r8,r8
 	mov r12,#0
-	push {r8,r10,r11,r12}
+	//push {r8,r10,r11,r12}
+	strd r8,r10,[sp,#112]
+	strd r11,r12,[sp,#120]
 	//frame address sp,128
-	push {r9,r10,r11,r12}
+	//push {r9,r10,r11,r12}
+	strd r9,r10,[sp,#96]
+	strd r11,r12,[sp,#104]
 	//frame address sp,144
 	
-	push {r0-r7}
+	//push {r0-r7}
+	strd r0,r1,[sp,#64]
+	strd r2,r3,[sp,#72]
+	strd r4,r5,[sp,#80]
+	strd r6,r7,[sp,#88]
 	//frame address sp,176
 	
 	umull r6,r7,r8,r8
-	push {r6,r7,r8,r10,r11,r12}
+	//push {r6,r7,r8,r10,r11,r12}
+	strd r6,r7,[sp,#40]
+	strd r8,r10,[sp,#48]
+	strd r11,r12,[sp,#56]
 	//frame address sp,200
-	push {r6,r7,r8,r10,r11,r12}
+	//push {r6,r7,r8,r10,r11,r12}
+	strd r6,r7,[sp,#16]
+	strd r8,r10,[sp,#24]
+	strd r11,r12,[sp,#32]
 	//frame address sp,224
-	push {r9,r10,r11,r12}
+	//push {r9,r10,r11,r12}
+	strd r9,r10,[sp,#0]
+	strd r11,r12,[sp,#8]
 	//frame address sp,240
 	
 	movs r0,#254
 	movs r3,#0
 	// 129 cycles so far
+	//sub sp,#32
 0:
+	sub sp,#60
 	// load scalar bit into r1
 	lsrs r1,r0,#5
-	adds r2,sp,#168
+	//sub sp,#32
+	adds r2,sp,#228
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
-	
-	strd r0,r1,[sp,#160]
+	strd r0,r1,[sp,#220]
 
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	mov r0,sp
-	add r1,sp,#64
-
-	
+	add r0,sp,#60 //mov r0,sp
+	add r1,sp,#124 //64+32+28
 	//mov r11,#4
 	// 15 cycles
 .rept 4
@@ -684,14 +710,19 @@ slothy_start:
 .endr
 	// 40*4 - 2 = 158 cycles
 	
-	mov r8,sp
-	add r9,sp,#32
+	add r8,sp,#60 //mov r8, sp
+	add r9,sp,#92
 	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
-	push {r0-r7}
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#28]
+	strd r2,r3,[sp,#36]
+	strd r4,r5,[sp,#44]
+	strd r6,r7,[sp,#52]
 	//frame address sp,272
 	
 	//ldr r3,[sp,284]
-	sub sp,#28
+	//sub sp,#28
 	fe25519_sqr
 	add sp,#28
 	push {r0-r7}
@@ -1110,7 +1141,7 @@ slothy_end:
 
 	//pop {r0} //meadd
     pop {r4-r11, lr}
-	add sp,#32
+	//add sp,#32
 	bx lr
 	
 	// 234 cycles after inversion
