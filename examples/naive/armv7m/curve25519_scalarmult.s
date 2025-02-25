@@ -661,21 +661,21 @@ slothy_start:
 	// 129 cycles so far
 	//sub sp,#32
 0:
-	sub sp,#60
+	sub sp,#128
 	// load scalar bit into r1
 	lsrs r1,r0,#5
 	//sub sp,#32
-	adds r2,sp,#228
+	adds r2,sp,#296
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
-	strd r0,r1,[sp,#220]
+	strd r0,r1,[sp,#288]
 
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	add r0,sp,#60 //mov r0,sp
-	add r1,sp,#124 //64+32+28
+	add r0,sp,#128 //mov r0,sp
+	add r1,sp,#192 //64+32+28+32
 	//mov r11,#4
 	// 15 cycles
 .rept 4
@@ -710,34 +710,50 @@ slothy_start:
 .endr
 	// 40*4 - 2 = 158 cycles
 	
-	add r8,sp,#60 //mov r8, sp
-	add r9,sp,#92
+	add r8,sp,#128 //mov r8, sp
+	add r9,sp,#160
 	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#28]
-	strd r2,r3,[sp,#36]
-	strd r4,r5,[sp,#44]
-	strd r6,r7,[sp,#52]
+	strd r0,r1,[sp,#96]
+	strd r2,r3,[sp,#104]
+	strd r4,r5,[sp,#112]
+	strd r6,r7,[sp,#120]
 	//frame address sp,272
 	
 	//ldr r3,[sp,284]
 	//sub sp,#28
 	fe25519_sqr
-	add sp,#28
-	push {r0-r7}
+	//add sp,#28
+	//push {r0-r7}
+	//sub sp,#32
+	// = sub sp,4
+	strd r0,r1,[sp,#64]
+	strd r2,r3,[sp,#72]
+	strd r4,r5,[sp,#80]
+	strd r6,r7,[sp,#88]
 	//frame address sp,304
 	
-	add r8,sp,#64
-	add r9,sp,#96
+	add r8,sp,#128
+	add r9,sp,#160
 	fe25519_sub r8,r9
-	push {r0-r7}
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#32]
+	strd r2,r3,[sp,#40]
+	strd r4,r5,[sp,#48]
+	strd r6,r7,[sp,#56]
 	//frame address sp,336
 	
-	sub sp,#28
+	//sub sp,#32
 	fe25519_sqr
-	add sp,#28
-	push {r0-r7}
+	//add sp,#28
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#0]
+	strd r2,r3,[sp,#8]
+	strd r4,r5,[sp,#16]
+	strd r6,r7,[sp,#24]
 	//frame address sp,368
 	
 	mov r1,sp
