@@ -296,7 +296,7 @@
 	umaal r6,r8,r9,r7
 	add r7,r8,r12
 
-	add sp,#12
+	//add sp,#12
 	//frame address sp,4
 	//pop {pc}
 	//pop {r11}
@@ -312,8 +312,7 @@
 	//push {r11}
 	//mov r11,#0
 	//frame push {lr}
-	//sub sp,#20 
-	push {r0-r4}
+	//sub sp,sp,#20 //push {r0-r4}
 	//frame address sp,24
 	//mul 01, 00
 	umull r9,r10,r0,r0
@@ -521,6 +520,7 @@
 	push {r8}
 	//frame push {r8,lr}
 0:
+	sub sp,sp,#20 
 	fe25519_sqr
 	
 	ldr r8,[sp,#0]
@@ -608,21 +608,18 @@ slothy_start:
 0:
 	// load scalar bit into r1
 	lsrs r1,r0,#5
-	sub sp,#20 //20
-	adds r2,sp,#188 //20
+	adds r2,sp,#168
 	
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
 	
-	strd r0,r1,[sp,#180] //20
+	strd r0,r1,[sp,#160]
 
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	add sp,#20 //20
 	mov r0,sp
-	
 	add r1,sp,#64
 
 	
@@ -666,6 +663,7 @@ slothy_start:
 	push {r0-r7}
 	//frame address sp,272
 	
+	sub sp,sp,#20 
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,304
@@ -676,6 +674,7 @@ slothy_start:
 	push {r0-r7}
 	//frame address sp,336
 	
+	sub sp,sp,#20 
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,368
@@ -683,6 +682,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#64
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#128
 	stm r8,{r0-r7}
 	
@@ -730,6 +730,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#64
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#160
 	stm r8,{r0-r7}
 
@@ -741,6 +742,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#32
 	stm r8,{r0-r7}
 
@@ -752,12 +754,14 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#96
 	fe25519_mul r1, r2
+	add sp,#12
 	stm sp,{r0-r7}
 
 	mov r8,sp
 	add r9,sp,#32
 	fe25519_add r8, r9
 
+	sub sp,sp,#20 
 	fe25519_sqr
 
 	add r8,sp,#192
@@ -767,12 +771,14 @@ slothy_start:
 	add r9,sp,#32
 	fe25519_sub r8, r9
 
+	sub sp,sp,#20 
 	fe25519_sqr
 	stm sp,{r0-r7}
 
 	mov r1,sp
 	add r2,sp,#256
 	fe25519_mul r1,r2
+	add sp,#12
 	add r8,sp,#224
 	stm r8,{r0-r7}
 
@@ -826,11 +832,14 @@ slothy_start:
 	// now we must invert zp
 	add r0,sp,#32
 	ldm r0,{r0-r7}
+	sub sp,sp,#20 
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,272
 	
+	sub sp,sp,#20 
 	fe25519_sqr
+	sub sp,sp,#20 
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,304
@@ -838,16 +847,19 @@ slothy_start:
 	add r1,sp,#96
 	mov r2,sp
 	fe25519_mul r1, r2
+	add sp,#12
 	stm sp,{r0-r7}
 
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#32
 	stm r8,{r0-r7}
 
 	// current stack: z^(2^9) z^(2^11) x z
 
+	sub sp,sp,#20 
 	fe25519_sqr
 	push {r0-r7}
 	//frame address sp,336
@@ -855,6 +867,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
@@ -867,6 +880,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
@@ -879,6 +893,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	stm sp,{r0-r7}
 	//z^(2^20 - 2^0)
 	
@@ -893,6 +908,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add sp,sp,#32
 	//frame address sp,336
 	//z^(2^40 - 2^0)
@@ -904,6 +920,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	add r8,sp,#32
 	stm r8,{r0-r7}
 	
@@ -916,6 +933,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	stm sp,{r0-r7}
 	
 	// 13751 cycles so far for inversion
@@ -931,7 +949,8 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
-	add sp,sp,#32
+	//add sp,#12
+	add sp,sp,#44
 	//frame address sp,336
 	//z^(2^200 - 2^0)
 	
@@ -944,6 +963,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#32
 	fe25519_mul r1, r2
+	add sp,#12
 	//z^(2^250 - 2^0)
 	
 	movs r8,#5
@@ -953,6 +973,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#64
 	fe25519_mul r1, r2
+	add sp,#12
 	stm sp,{r0-r7}
 	//z^(2^255 - 21)
 	
@@ -964,6 +985,7 @@ slothy_start:
 	mov r1,sp
 	add r2,sp,#96
 	fe25519_mul r1, r2
+	add sp,#12
 	
 	// now final reduce
 	lsr r8,r7,#31
