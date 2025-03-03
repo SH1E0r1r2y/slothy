@@ -659,23 +659,22 @@ slothy_start:
 	movs r0,#254
 	movs r3,#0
 	// 129 cycles so far
-	//sub sp,#32
+	sub sp,#172
 0:
-	sub sp,#128
 	// load scalar bit into r1
 	lsrs r1,r0,#5
 	//sub sp,#32
-	adds r2,sp,#296
+	adds r2,sp,#340
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
-	strd r0,r1,[sp,#288]
+	strd r0,r1,[sp,#332]
 
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	add r0,sp,#128 //mov r0,sp
-	add r1,sp,#192 //64+32+28+32
+	add r0,sp,#172 //mov r0,sp
+	add r1,sp,#236 //64+32+28+32
 	//mov r11,#4
 	// 15 cycles
 .rept 4
@@ -710,15 +709,15 @@ slothy_start:
 .endr
 	// 40*4 - 2 = 158 cycles
 	
-	add r8,sp,#128 //mov r8, sp
-	add r9,sp,#160
+	add r8,sp,#172 //mov r8, sp
+	add r9,sp,#204
 	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#96]
-	strd r2,r3,[sp,#104]
-	strd r4,r5,[sp,#112]
-	strd r6,r7,[sp,#120]
+	strd r0,r1,[sp,#140]
+	strd r2,r3,[sp,#148]
+	strd r4,r5,[sp,#156]
+	strd r6,r7,[sp,#164]
 	//frame address sp,272
 	
 	//ldr r3,[sp,284]
@@ -728,21 +727,21 @@ slothy_start:
 	//push {r0-r7}
 	//sub sp,#32
 	// = sub sp,4
-	strd r0,r1,[sp,#64]
-	strd r2,r3,[sp,#72]
-	strd r4,r5,[sp,#80]
-	strd r6,r7,[sp,#88]
+	strd r0,r1,[sp,#108]
+	strd r2,r3,[sp,#116]
+	strd r4,r5,[sp,#124]
+	strd r6,r7,[sp,#132]
 	//frame address sp,304
 	
-	add r8,sp,#128
-	add r9,sp,#160
+	add r8,sp,#172
+	add r9,sp,#204
 	fe25519_sub r8,r9
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#32]
-	strd r2,r3,[sp,#40]
-	strd r4,r5,[sp,#48]
-	strd r6,r7,[sp,#56]
+	strd r0,r1,[sp,#76]
+	strd r2,r3,[sp,#84]
+	strd r4,r5,[sp,#92]
+	strd r6,r7,[sp,#100]
 	//frame address sp,336
 	
 	//sub sp,#32
@@ -750,21 +749,21 @@ slothy_start:
 	//add sp,#28
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#0]
-	strd r2,r3,[sp,#8]
-	strd r4,r5,[sp,#16]
-	strd r6,r7,[sp,#24]
+	strd r0,r1,[sp,#44]
+	strd r2,r3,[sp,#52]
+	strd r4,r5,[sp,#60]
+	strd r6,r7,[sp,#68]
 	//frame address sp,368
 	
 	//sub sp,#44
-	add r1,sp, #0//mov r1,sp = add r1,sp,#32
-	add r2,sp,#64
-	sub sp,#44
+	add r1,sp, #44//mov r1,sp = add r1,sp,#32
+	add r2,sp,#108
+	//sub sp,#44
 	fe25519_mul r1, r2
 	//add sp,#44
 	//add r8,sp,#128
 	//stm r8,{r0-r7}
-	strd r0, r1, [sp, #172] //Can't change?
+	strd r0, r1, [sp, #172]
 	strd r2, r3, [sp, #180]
 	strd r4, r5, [sp, #188]
 	strd r6, r7, [sp, #196]
@@ -906,17 +905,19 @@ slothy_start:
 	add r2,sp,#300
 	//sub sp,#44
 	fe25519_mul r1,r2
-	add sp,#44
-	add r8,sp,#224
+	//add sp,#44
+	add r8,sp,#268
 	stm r8,{r0-r7}
 
-	add sp,#128
+	//add sp,#172
 	//frame address sp,240
 
-	ldrd r2,r3,[sp,#160]
+	ldrd r2,r3,[sp,#332]
+	
 	subs r0,r2,#1
 	// 97 + 2*45 + 2*46 + 4*173 + 2*115 = 1201 cycles
 	bpl 0b
+	add sp,#172
 	// in total 2020 cycles per iteration, in total 515 098 cycles for 255 iterations
 
 	//These cswap lines are not needed for curve25519 since the lowest bit is hardcoded to 0
