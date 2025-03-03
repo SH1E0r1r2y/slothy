@@ -661,21 +661,21 @@ slothy_start:
 	// 129 cycles so far
 	//sub sp,#32
 0:
-	sub sp,#128
+	sub sp,#172
 	// load scalar bit into r1
 	lsrs r1,r0,#5
 	//sub sp,#32
-	adds r2,sp,#296
+	adds r2,sp,#340
 	ldr r1,[r2,r1,lsl #2]
 	and r4,r0,#0x1f
 	lsrs r1,r1,r4
 	and r1,r1,#1
-	strd r0,r1,[sp,#288]
+	strd r0,r1,[sp,#332]
 
 	eors r1,r1,r3
 	rsbs lr,r1,#0
-	add r0,sp,#128 //mov r0,sp
-	add r1,sp,#192 //64+32+28+32
+	add r0,sp,#172 //mov r0,sp
+	add r1,sp,#236 //64+32+28+32
 	//mov r11,#4
 	// 15 cycles
 .rept 4
@@ -710,15 +710,15 @@ slothy_start:
 .endr
 	// 40*4 - 2 = 158 cycles
 	
-	add r8,sp,#128 //mov r8, sp
-	add r9,sp,#160
+	add r8,sp,#172 //mov r8, sp
+	add r9,sp,#204
 	fe25519_add r8,r9 //加上之後出問題，因為沒有寫回，用r8 r9 就可以了
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#96]
-	strd r2,r3,[sp,#104]
-	strd r4,r5,[sp,#112]
-	strd r6,r7,[sp,#120]
+	strd r0,r1,[sp,#140]
+	strd r2,r3,[sp,#148]
+	strd r4,r5,[sp,#156]
+	strd r6,r7,[sp,#164]
 	//frame address sp,272
 	
 	//ldr r3,[sp,284]
@@ -728,21 +728,21 @@ slothy_start:
 	//push {r0-r7}
 	//sub sp,#32
 	// = sub sp,4
-	strd r0,r1,[sp,#64]
-	strd r2,r3,[sp,#72]
-	strd r4,r5,[sp,#80]
-	strd r6,r7,[sp,#88]
+	strd r0,r1,[sp,#108]
+	strd r2,r3,[sp,#116]
+	strd r4,r5,[sp,#124]
+	strd r6,r7,[sp,#132]
 	//frame address sp,304
 	
-	add r8,sp,#128
-	add r9,sp,#160
+	add r8,sp,#172
+	add r9,sp,#204
 	fe25519_sub r8,r9
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#32]
-	strd r2,r3,[sp,#40]
-	strd r4,r5,[sp,#48]
-	strd r6,r7,[sp,#56]
+	strd r0,r1,[sp,#76]
+	strd r2,r3,[sp,#84]
+	strd r4,r5,[sp,#92]
+	strd r6,r7,[sp,#100]
 	//frame address sp,336
 	
 	//sub sp,#32
@@ -750,15 +750,16 @@ slothy_start:
 	//add sp,#28
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#0]
-	strd r2,r3,[sp,#8]
-	strd r4,r5,[sp,#16]
-	strd r6,r7,[sp,#24]
+	strd r0,r1,[sp,#44]
+	strd r2,r3,[sp,#52]
+	strd r4,r5,[sp,#60]
+	strd r6,r7,[sp,#68]
 	//frame address sp,368
 	
-	mov r1,sp
-	add r2,sp,#64
-	sub sp,#44
+	//sub sp,#44
+	add r1,sp, #44//mov r1,sp = add r1,sp,#32
+	add r2,sp,#108
+	//sub sp,#44
 	fe25519_mul r1, r2
 	add sp,#44
 	add r8,sp,#128
@@ -776,6 +777,7 @@ slothy_start:
 	//ldr lr,=121666
 	mov lr,#56130 //meadd
 	add lr,lr,#65536 //meadd
+	
 	ldr r12,[sp,#28]
 	mov r11,#0
 	umaal r12,r11,lr,r7
@@ -785,29 +787,38 @@ slothy_start:
 	mul r11,r11,r7
 	bic r7,r12,#0x80000000
 	//sub sp, sp, #32 //meadd
-	ldm sp!,{r8,r9,r10,r12} //where did they push?
+	ldm sp,{r8,r9,r10,r12} 
+	add sp,#16
 	//frame address sp,352
 	umaal r8,r11,lr,r0
 	umaal r9,r11,lr,r1
 	umaal r10,r11,lr,r2
 	umaal r12,r11,lr,r3
-	ldm sp!,{r0,r1,r2}
+	//sub sp,#12 載入時會add
+	ldm sp,{r0,r1,r2} //ldm sp!,{r0,r1,r2}
+	//add sp,#12
+	sub sp,#60
 	//frame address sp,340
 	umaal r0,r11,lr,r4
 	umaal r1,r11,lr,r5
 	umaal r2,r11,lr,r6
 	add r7,r7,r11
-	add sp,sp,#4
+	//add sp,sp,#4
 	//frame address sp,338
-	push {r0,r1,r2,r7}
+	//push {r0,r1,r2,r7}
+	//sub sp,#12
+	strd r0,r1,[sp,#60]
+	strd r2,r7,[sp,#68]
 	//frame address sp,352
-	push {r8,r9,r10,r12}
+	//push {r8,r9,r10,r12}
+	strd r8,r9,[sp,#44]
+	strd r10,r12,[sp,#52]
 	//frame address sp,368
 	// 39 cycles
 
-	mov r1,sp
-	add r2,sp,#64
-	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#108
+	//sub sp,#44
 	fe25519_mul r1, r2
 	add sp,#44
 	add r8,sp,#160
@@ -818,9 +829,10 @@ slothy_start:
 	fe25519_add r8, r9
 	stm sp,{r0-r7}
 	
-	mov r1,sp
-	add r2,sp,#32
 	sub sp,#44
+	add r1,sp,#44 //mov r1,sp
+	add r2,sp,#76
+	//sub sp,#44
 	fe25519_mul r1, r2
 	add sp,#44
 	add r8,sp,#32
@@ -844,29 +856,37 @@ slothy_start:
 
 	sub sp,#28
 	fe25519_sqr
-	add sp,#28
+	//add sp,#28
+	//sub sp,#28
 
-	add r8,sp,#192
-	stm r8,{r0-r7}
+	//add r8,sp,#192
+	//stm r8,{r0-r7}
+	strd r0, r1, [sp, #220]
+	strd r2, r3, [sp, #228]
+	strd r4, r5, [sp, #236]
+	strd r6, r7, [sp, #244]
+
 	
-	mov r8,sp
-	add r9,sp,#32
+	//sub sp,#28
+	add r8,sp,#28//mov r8,sp
+	add r9,sp,#60
 	fe25519_sub r8, r9
 
-	sub sp,#28
+	//sub sp,#28
 	fe25519_sqr
 	add sp,#28
 	stm sp,{r0-r7}
 
-	mov r1,sp
-	add r2,sp,#256
 	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#300
+	//sub sp,#44
 	fe25519_mul r1,r2
 	add sp,#44
 	add r8,sp,#224
 	stm r8,{r0-r7}
 
-	add sp,sp,#128
+	add sp,#128
 	//frame address sp,240
 
 	ldrd r2,r3,[sp,#160]
@@ -916,19 +936,29 @@ slothy_start:
 	// now we must invert zp
 	add r0,sp,#32
 	ldm r0,{r0-r7}
-	sub sp,#28
+	sub sp,#32
 	fe25519_sqr
-	add sp,#28
-	push {r0-r7}
+	//add sp,#28
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#0]
+	strd r2,r3,[sp,#8]
+	strd r4,r5,[sp,#16]
+	strd r6,r7,[sp,#24]
 	//frame address sp,272
 	
-	sub sp,#28
+	sub sp,#32
 	fe25519_sqr
-	add sp,#28
-	sub sp,#28
+	//add sp,#28
+	//sub sp,#28
 	fe25519_sqr
-	add sp,#28
-	push {r0-r7}
+	//add sp,#28
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#0]
+	strd r2,r3,[sp,#8]
+	strd r4,r5,[sp,#16]
+	strd r6,r7,[sp,#24]
 	//frame address sp,304
 	
 	add r1,sp,#96
@@ -1057,9 +1087,10 @@ slothy_start:
 	fe25519_sqr_many // 6169 cycles
 	//z^(2^250 - 2^50)
 	
-	mov r1,sp
-	add r2,sp,#32
 	sub sp,#44
+	add r1,sp,44//mov r1,sp
+	add r2,sp,#76
+	//sub sp,#44
 	fe25519_mul r1, r2
 	add sp,#44
 	//z^(2^250 - 2^0)
@@ -1081,9 +1112,10 @@ slothy_start:
 	// done inverting!
 	// total inversion cost: 33412 cycles
 	
-	mov r1,sp
-	add r2,sp,#96
 	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#96+44
+	//sub sp,#44
 	fe25519_mul r1, r2
 	add sp,#44
 	
