@@ -537,28 +537,32 @@
 .endm
 
 .macro fe25519_sqr_many
+	//sub sp,#36
 	mov r11,lr //to store lr
-	push {r11}
+	//push {r11}
+	
+	str r11,[sp,#32]
 	mov r11,#0
 	
-	push {r8}
+	//push {r8}
+	//sub sp,#4
+	str r8,[sp,#28]
 	//frame push {r8,lr}
+	//sub sp,#28
 0:
-	sub sp,#28
 	fe25519_sqr
-	add sp,#28
-	
-	ldr r8,[sp,#0]
+	ldr r8,[sp,#28]
 	subs r8,r8,#1
-	str r8,[sp,#0]
+	str r8,[sp,#28]
 	bne 0b
-	
-	add sp,sp,#4
+	//add sp,sp,#4
 	//frame address sp,4
-	add r8,sp,#4
+	add r8,sp,#36
 	stm r8,{r0-r7}
+	//add sp,#32
 	//pop {pc}
-	pop {r11}
+	//pop {r11}
+	ldr r11,[sp,#36]
 .endm
 
 // in: *r0 = result, *r1 = scalar, *r2 = basepoint (all pointers may be unaligned)
@@ -917,7 +921,6 @@ slothy_start:
 	subs r0,r2,#1
 	// 97 + 2*45 + 2*46 + 4*173 + 2*115 = 1201 cycles
 	bpl 0b
-	add sp,#172
 	// in total 2020 cycles per iteration, in total 515 098 cycles for 255 iterations
 
 	//These cswap lines are not needed for curve25519 since the lowest bit is hardcoded to 0
@@ -959,20 +962,21 @@ slothy_start:
 	//----------
 
 	// now we must invert zp
-	add r0,sp,#32
+	//add sp,#108
+	add r0,sp,#204
 	ldm r0,{r0-r7}
-	sub sp,#32
+	//sub sp,#64
 	fe25519_sqr
 	//add sp,#28
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#0]
-	strd r2,r3,[sp,#8]
-	strd r4,r5,[sp,#16]
-	strd r6,r7,[sp,#24]
+	strd r0,r1,[sp,#140]
+	strd r2,r3,[sp,#148]
+	strd r4,r5,[sp,#156]
+	strd r6,r7,[sp,#164]
 	//frame address sp,272
 	
-	sub sp,#32
+	//sub sp,#32
 	fe25519_sqr
 	//add sp,#28
 	//sub sp,#28
@@ -980,128 +984,165 @@ slothy_start:
 	//add sp,#28
 	//push {r0-r7}
 	//sub sp,#32
-	strd r0,r1,[sp,#0]
-	strd r2,r3,[sp,#8]
-	strd r4,r5,[sp,#16]
-	strd r6,r7,[sp,#24]
+	strd r0,r1,[sp,#108]
+	strd r2,r3,[sp,#116]
+	strd r4,r5,[sp,#124]
+	strd r6,r7,[sp,#132]
 	//frame address sp,304
 	
-	add r1,sp,#96
-	mov r2,sp
-	sub sp,#44
+	add r1,sp,#204
+	add r2,sp,#108//mov r2,sp
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	stm sp,{r0-r7}
+	//add sp,#44
+	//stm sp,{r0-r7}
+	strd r0,r1,[sp,#108]
+	strd r2,r3,[sp,#116]
+	strd r4,r5,[sp,#124]
+	strd r6,r7,[sp,#132]
 
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#108//mov r1,sp
+	add r2,sp,#140
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	add r8,sp,#32
+	add r8,sp,#140
 	stm r8,{r0-r7}
-
+	//strd r0,r1,[sp,#64]
+	//strd r2,r3,[sp,#72]
+	//strd r4,r5,[sp,#80]
+	//strd r6,r7,[sp,#88]
 	// current stack: z^(2^9) z^(2^11) x z
 
-	sub sp,#28
+	//sub sp,#32
 	fe25519_sqr
-	add sp,#28
-	push {r0-r7}
+	//add sp,#28
+	//push {r0-r7}
+	//sub sp,#32
+	strd r0,r1,[sp,#76]
+	strd r2,r3,[sp,#84]
+	strd r4,r5,[sp,#92]
+	strd r6,r7,[sp,#100]
 	//frame address sp,336
 
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#76//mov r1,sp
+	add r2,sp,#108
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	add r8,sp,#32
-	stm r8,{r0-r7}
-	
+	//add sp,#40//add sp,#44
+	//add r8,sp,#32
+	//stm r8,{r0-r7}
+	strd r0,r1,[sp,#108]
+	strd r2,r3,[sp,#116]
+	strd r4,r5,[sp,#124]
+	strd r6,r7,[sp,#132]
+	add sp,#40
 	// current stack: _ z^(2^5 - 2^0) z^(2^11) x z
 	
 	mov r8,#5
 	// 1052 cycles
+	//sub sp,#36
 	fe25519_sqr_many // 634 cycles
-
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	sub sp,#16//add sp,#36
+	add r1,sp,#52//mov r1,sp
+	add r2,sp,#84
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	add r8,sp,#32
-	stm r8,{r0-r7}
-	
+	//add sp,#16//add sp,#44
+	//add r8,sp,#32
+	//stm r8,{r0-r7}
+	strd r0,r1,[sp,#84]
+	strd r2,r3,[sp,#92]
+	strd r4,r5,[sp,#100]
+	strd r6,r7,[sp,#108]
 	// current stack: _ z^(2^10 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#10
+	add sp,#16//sub sp,#36
 	fe25519_sqr_many // 1249 cycles
 	//z^(2^20 - 2^10)
+	sub sp,#32//add sp,#36
 
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#68//mov r1,sp
+	add r2,sp,#100
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	stm sp,{r0-r7}
+	//sub sp,#24//add sp,#44
+	//stm sp,{r0-r7}
+	strd r0,r1,[sp,#68]
+	strd r2,r3,[sp,#76]
+	strd r4,r5,[sp,#84]
+	strd r6,r7,[sp,#92]
 	//z^(2^20 - 2^0)
 	
 	// current stack: z^(2^20 - 2^0) z^(2^10 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#20
-	sub sp,sp,#32
+	//sub sp,sp,#68
 	//frame address sp,368
+	//sub sp,#36
 	fe25519_sqr_many // 2479 cycles
 	//z^(2^40 - 2^20)
+	sub sp,#8//add sp,#36
 	
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#76
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#76
+	add sp,#40
 	//add sp,#12
 	//frame address sp,336
 	//z^(2^40 - 2^0)
 
 	movs r8,#10
+	//sub sp,#36
 	fe25519_sqr_many // 1249 cycles
 	//z^(2^50 - 2^10)
+	sub sp,#8//add sp,#36
 
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#76
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	add r8,sp,#32
+	add sp,#8
+	add r8,sp,#68
 	stm r8,{r0-r7}
 	
 	// current stack: _ z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
 	
 	movs r8,#50
+	//sub sp,#36
 	fe25519_sqr_many // 6169 cycles
 	//z^(2^100 - 2^50)
-	
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	sub sp,#32//add sp,#36
+
+	add r1,sp,#68//mov r1,sp
+	add r2,sp,#100
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	stm sp,{r0-r7}
+	//sub sp,#24//add sp,#44
+	//stm sp,{r0-r7}
+	strd r0,r1,[sp,#68]
+	strd r2,r3,[sp,#76]
+	strd r4,r5,[sp,#84]
+	strd r6,r7,[sp,#92]
 	
 	// 13751 cycles so far for inversion
 	
 	// current stack: z^(2^100 - 2^0) z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
 
 	movs r8,#100
-	sub sp,sp,#32
+	//sub sp,sp,#32
 	//frame address sp,368
+	//sub sp,#36
 	fe25519_sqr_many // 12319 cycles
 	//z^(2^200 - 2^100)
+	sub sp, #8//add sp,#36
 	
-	mov r1,sp
-	add r2,sp,#32
-	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#76
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#76
+	add sp,#40
 	//add sp,#44
 	//frame address sp,336
 	//z^(2^200 - 2^0)
@@ -1109,27 +1150,35 @@ slothy_start:
 	// current stack: _ z^(2^50 - 2^0) z^(2^11) x z <scratch> ...
 
 	movs r8,#50
+	//sub sp,#36
 	fe25519_sqr_many // 6169 cycles
 	//z^(2^250 - 2^50)
+	//add sp,#36
 	
-	sub sp,#44
+	sub sp,#8
 	add r1,sp,44//mov r1,sp
 	add r2,sp,#76
 	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
+	add sp,#8
 	//z^(2^250 - 2^0)
 	
 	movs r8,#5
+	//sub sp,#36
 	fe25519_sqr_many // 634 cycles
 	//z^(2^255 - 2^5)
+	sub sp,#8//add sp,#36
 	
-	mov r1,sp
-	add r2,sp,#64
-	sub sp,#44
+	add r1,sp,#44//mov r1,sp
+	add r2,sp,#108
+	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
-	stm sp,{r0-r7}
+	//add sp,#44
+	//stm sp,{r0-r7}
+	strd r0,r1,[sp,#44]
+	strd r2,r3,[sp,#52]
+	strd r4,r5,[sp,#60]
+	strd r6,r7,[sp,#68]
 	//z^(2^255 - 21)
 	
 	// 19661 for second half of inversion
@@ -1137,12 +1186,12 @@ slothy_start:
 	// done inverting!
 	// total inversion cost: 33412 cycles
 	
-	sub sp,#44
+	//sub sp,#44
 	add r1,sp,#44//mov r1,sp
 	add r2,sp,#96+44
 	//sub sp,#44
 	fe25519_mul r1, r2
-	add sp,#44
+	//add sp,#44
 	
 	// now final reduce
 	lsr r8,r7,#31
@@ -1167,7 +1216,7 @@ slothy_start:
 	orr r8,r8,r11, lsl #1
 	mul r8,r8,r9
 	
-	ldr r9,[sp,#296]
+	ldr r9,[sp,#340]
 	
 	adds r0,r0,r8
 	str r0,[r9,#0]
@@ -1189,6 +1238,7 @@ slothy_start:
 	str r5,[r1,#20]
 	str r6,[r1,#24]
 	str r7,[r1,#28]
+	add sp,#44
 slothy_end:
 	add sp,sp,#300
 	//frame address sp,36
